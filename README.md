@@ -9,8 +9,8 @@ The system features 4 collaborative robots handling multiple catering related ta
 * OMRON TM12: A medium-duty robotic arm with a 12 kg payload and 1,300 mm reach, making it suitable for automated food packaging, end-of-line palletizing, and material handling in food production.
 
 # Contributors
-Christina Eugene - FAIRINO FR3
-Anthony Fava - Lynxmotion SES-PRO
-Kaja Katovcic - Igus ReBeL 
+* Christina Eugene - FAIRINO FR3
+* Anthony Fava - Lynxmotion SES-PRO
+* Kaja Katovcic - Igus ReBeL 
 
 
