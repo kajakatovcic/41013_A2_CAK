@@ -5,8 +5,6 @@ from ir_support.robots.UTSMeshRobot import UTSMeshRobot
 
 deg = pi / 180
 
-# The meshes live in JAKA_Meshes/ next to this file. If you move this file
-# into that folder instead, drop the join and use dirname(__file__) alone.
 MESH_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "JAKA_Meshes")
 
 
@@ -30,9 +28,9 @@ class JakaMiniCobo(UTSMeshRobot):
         return [
             rtb.RevoluteDH(d=0.187, a=0, alpha=pi / 2, qlim=[-2 * pi, 2 * pi]),
             rtb.RevoluteDH(d=0, a=0.21, alpha=0, offset=+pi / 2, qlim=[-120 * deg, 120 * deg]),
-            rtb.RevoluteDH(d=0.006,  a=0, alpha=-pi / 2, offset=-pi / 2, qlim=[-125 * deg, 125 * deg]),
-            rtb.RevoluteDH(d=0.2105, a=0, alpha=pi / 2, qlim=[-2 * pi, 2 * pi]),
-            rtb.RevoluteDH(d=0, a=0, alpha=-pi / 2, qlim=[-120 * deg, 120 * deg]),
+            rtb.RevoluteDH(d=0.006,  a=0, alpha=-pi/ 2, offset=-pi / 2, qlim=[-125 * deg, 125 * deg]),
+            rtb.RevoluteDH(d=0.2105, a=0, alpha=pi/2, qlim=[-2 * pi, 2 * pi]),
+            rtb.RevoluteDH(d=0, a=0, alpha=-pi/2, qlim=[-120 * deg, 120 * deg]),
             rtb.RevoluteDH(d=0.1593, a=0, alpha=0, qlim=[-2 * pi, 2 * pi]),
         ]
  
