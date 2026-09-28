@@ -1,8 +1,24 @@
+import os
 import numpy as np
+import shutil, tempfile
 import roboticstoolbox as rtb
 from roboticstoolbox import Link, ET, ERobot
 from spatialmath import SE3
-from spatialgeometry import Cylinder, Sphere, Cuboid
+from spatialgeometry import Cylinder, Sphere, Cuboid, Mesh
+
+MESH_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Lynxmotion_Meshes")
+
+
+BRACKET_LIFT = 0.0318
+BASE_Z = 0.0329
+
+def safe_mesh_path(filename):
+    src = os.path.join(MESH_DIR, filename)
+    dst_dir = os.path.join(tempfile.gettempdir(), "lynx_meshes")
+    os.makedirs(dst_dir, exist_ok=True)
+    dst = os.path.join(dst_dir, filename)
+    shutil.copy(src, dst)
+    return dst
 
 # ------------------------------------------------------------
 # LINK DIMENSIONS
@@ -33,6 +49,7 @@ class LynxmotionSESPro(ERobot):
             tool=SE3.Tz(D6),
         )
 
+        self.base = SE3.Tz(BASE_Z)
         deg = np.pi / 180
         self.qr = np.array([0, -60 * deg, 60 * deg, 0, 30 * deg, 0])
         self.qz = np.zeros(6)
@@ -46,9 +63,10 @@ class LynxmotionSESPro(ERobot):
         RED = (0.85, 0.1, 0.1, 1)
         GRIP = (0.75, 0.75, 0.75, 1)
 
-        base_plate = Cylinder(radius=0.09, length=0.02,
-                              pose=SE3(0, 0, -0.01), color=(0.1, 0.1, 0.1, 1))
-
+        base_plate = Mesh(filename=safe_mesh_path("base_bracket.stl"),
+                          scale=[1, 1, 1], color=(0.08, 0.08, 0.09, 1),
+                          pose=SE3(0, 0, BRACKET_LIFT))
+        
         WAIST_BOX = 0.09
         post_len = D1 - WAIST_BOX
         SERVO_A2, CAP_A2 = 0.06, 0.03
