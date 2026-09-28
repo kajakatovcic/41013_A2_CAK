@@ -66,50 +66,53 @@ class LynxmotionSESPro(ERobot):
         base_plate = Mesh(filename=safe_mesh_path("base_bracket.stl"),
                           scale=[1, 1, 1], color=(0.08, 0.08, 0.09, 1),
                           pose=SE3(0, 0, BRACKET_LIFT))
-        
+
         WAIST_BOX = 0.09
         post_len = D1 - WAIST_BOX
         SERVO_A2, CAP_A2 = 0.06, 0.03
         TUBE_A2 = A2 - SERVO_A2 - CAP_A2
         SERVO_A3, CAP_A3 = 0.03, 0.02
         TUBE_A3 = A3 - SERVO_A3 - CAP_A3
-        TUBE_HALF = 0.14375  
+        TUBE_HALF = 0.14375
         TUBE_AXIS = 0.042
 
+        BIG = 0.09
+        WRIST1, WRIST2, WRIST3 = 0.085, 0.075, 0.065
+
         parts = [
-            (0, Cylinder(radius=0.035, length=post_len, color=DARK),
+            (0, Cylinder(radius=0.04, length=post_len, color=DARK),
              SE3(0, 0, post_len / 2)),
-            (0, Cuboid(scale=[0.08, 0.07, WAIST_BOX],color=DARK),
+            (0, Cuboid(scale=[BIG, BIG, WAIST_BOX], color=DARK),
              SE3(0, 0, post_len + WAIST_BOX / 2)),
 
-            (1, Cuboid(scale=[SERVO_A2, 0.06, 0.06], color=DARK),
+            (1, Cuboid(scale=[SERVO_A2, BIG, BIG], color=DARK),
              SE3(SERVO_A2 / 2, 0, 0)),
             (1, Mesh(filename=safe_mesh_path("cf_tube_280.stl"),
                      scale=[1, 1, 1], color=RED),
              SE3(SERVO_A2 + TUBE_HALF, 0, TUBE_AXIS) * SE3.Ry(np.pi / 2)),
-            (1, Cuboid(scale=[CAP_A2, 0.05, 0.05], color=CAP),
+            (1, Cuboid(scale=[CAP_A2, BIG, BIG], color=CAP),
              SE3(A2 - CAP_A2 / 2, 0, 0)),
 
-            (2, Cuboid(scale=[SERVO_A3, 0.05, 0.05], color=DARK),
+            (2, Cuboid(scale=[SERVO_A3, BIG, BIG], color=DARK),
              SE3(SERVO_A3 / 2, 0, 0)),
             (2, Mesh(filename=safe_mesh_path("cf_tube_280.stl"),
                      scale=[1, 1, 1], color=RED),
              SE3(SERVO_A3 + TUBE_HALF, 0, TUBE_AXIS) * SE3.Ry(np.pi / 2)),
-            (2, Cuboid(scale=[CAP_A3, 0.04, 0.04], color=CAP),
-             SE3(A3 - CAP_A3 / 2, 0, 0)), 
+            (2, Cuboid(scale=[CAP_A3, BIG, BIG], color=CAP),
+             SE3(A3 - CAP_A3 / 2, 0, 0)),
 
-            (3, Cuboid(scale=[0.05, 0.05, 0.05], color=DARK), SE3()),
-            (4, Cuboid(scale=[0.045, 0.045, 0.045], color=DARK), SE3()),  
+            (3, Cuboid(scale=[WRIST1, WRIST1, WRIST1], color=DARK), SE3()),
+            (4, Cuboid(scale=[WRIST2, WRIST2, WRIST2], color=DARK), SE3()),
 
-            (5, Cuboid(scale=[0.04, 0.04, 0.04], color=DARK), SE3()), 
-            (5, Cylinder(radius=0.018, length=D6 * 0.6, color=GRIP),
+            (5, Cuboid(scale=[WRIST3, WRIST3, WRIST3], color=DARK), SE3()),
+            (5, Cylinder(radius=0.02, length=D6 * 0.6, color=GRIP),
              SE3(0, 0, D6 * 0.3)),
             (5, Cuboid(scale=[0.012, 0.015, 0.05], color=GRIP),
              SE3(0.02, 0, D6 * 0.75)),
             (5, Cuboid(scale=[0.012, 0.015, 0.05], color=GRIP),
-             SE3(-0.02, 0, D6 * 0.75)),     
+             SE3(-0.02, 0, D6 * 0.75)),
             ]
-        return base_plate, parts  
+        return base_plate, parts
 
     def pose_visuals(self, q, parts):
         link_frames = self.fkine_all(q)
