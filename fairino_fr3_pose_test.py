@@ -1,18 +1,18 @@
 """
 FAIRINO FR3 Candidate Pose Test
-
-Purpose
 -------
-Quickly test candidate FR3 joint configurations in the same style as the
-StudentBot6 pose tester used previously.
+Quickly test candidate FR3 joint configurations similar to my previous lab assignment.
 
 IMPORTANT:
 - Passing the checks in this script does NOT certify a pose as physically safe.
-- The script checks joint limits and an approximate link-frame floor clearance.
-- It does not model self-collision, tooling, payload, or external obstacles.
-- Use the complete mesh/collision model later for final workcell validation.
+- Checks joint limits and an approximate link-frame floor clearance.
+- Does not model self-collision, tooling, payload, or external obstacles yet.
+- Uses the complete mesh/collision model later for final workcell validation.
 
-Edit/add PRESET_POSES or use the console entry mode to try your own positions.
+Edit/add PRESET_POSES or use console entry mode to try your own positions.
+
+NOTE: I HAD SO MANY ISSUES WITH GIT SO I WAS WORKING ON AN INDIVIDUAL LOCAL FILE SO MY GITCOMMITS ARE NOT CONSISTENT 
+THROUGH THE WEEKS BUT I SWEAR I HAVE BEEN WORKING ON THIS ASSIGNMENT :,(
 """
 
 import numpy as np

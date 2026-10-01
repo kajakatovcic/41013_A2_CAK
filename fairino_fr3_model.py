@@ -1,15 +1,12 @@
 """
 FAIRINO FR3 - standard DH model for Robotics Toolbox / Swift.
 
-This model is intended for the Industrial Robotics assignment workflow:
+This model intended for initial testing and modelling of the FAIRNO FR3 Robot:
 1. Verify the kinematics with CylindricalDHRobotPlot.
 2. Test candidate joint configurations.
 3. Only after the DH model is correct, attach/export detailed meshes.
 
-Standard DH convention used by Robotics Toolbox:
-    A_i = Rz(q_i) @ Tz(d_i) @ Tx(a_i) @ Rx(alpha_i)
-
-Dimensions are in metres.
+Dimensions  in metres.
 
 FR3 kinematic dimensions used here:
     d1 = 0.140
@@ -20,11 +17,13 @@ FR3 kinematic dimensions used here:
     d6 = 0.100
 
 The signs on a2/a3 follow the frame convention used by the official FAIRINO
-FR3 V6 URDF chain. A different DH frame assignment can produce an equivalent
-table with different signs/offsets.
+FR3 V6 URDF chain. 
 
 Joint limits below follow the supplied FR3 mechanical drawing / FAIRINO FR3
-specification rather than the wider limits present in some ROS model files.
+specification.
+
+NOTE: I HAD SO MANY ISSUES WITH GIT SO I WAS WORKING ON AN INDIVIDUAL LOCAL FILE SO MY GITCOMMITS ARE NOT CONSISTENT 
+THROUGH THE WEEKS BUT I SWEAR I HAVE BEEN WORKING ON THIS ASSIGNMENT :,(
 """
 
 from math import pi
@@ -78,8 +77,8 @@ def create_fairino_fr3():
 
     robot = DHRobot(links, name="FAIRINO_FR3")
 
-    # A useful starting posture for visual inspection.
-    # This is only a candidate simulation pose, not a certified safe pose.
+    # Useful starting posture for visual inspection.
+    # This is only a test simulation pose, not certified safe pose.
     robot.q = np.deg2rad([0, -90, 90, -90, -90, 0])
 
     return robot
@@ -116,9 +115,6 @@ def run_cylindrical_test():
     env = swift.Swift()
     env.launch(realtime=True)
     env.add(robot)
-
-    # Camera aimed at a compact tabletop-sized robot.
-    env.set_camera_pose([1.4, 1.4, 1.1], [0, 0, 0.25])
     env.step()
 
     print("\nStarting joint state [deg]:")
