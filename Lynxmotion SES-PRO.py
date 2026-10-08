@@ -29,7 +29,7 @@ def safe_mesh_path(filename):
     return dst
 
 # ------------------------------------------------------------
-# MESH MEASUREMENT
+# MESH MEASUREMENTS
 # ------------------------------------------------------------
 FILES = {"m1": "lss_m1_lo.stl", "s1": "lss_s1_lo.stl", "l1": "lss_l1_lo.stl",
          "tube": "cf_tube_280.stl"}
