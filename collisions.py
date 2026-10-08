@@ -28,7 +28,7 @@
 #        than the gap between points, can be missed. An ellipsoid also only
 #        approximates a box or cylinder (does not fill the corners).
 #    Example use: MiniCobo gripper and the held cup. These are the bulky parts that go
-#    into tight spaces (the 0.20 m wide machine bay past the dispenser), where
+#    into tight spaces (the 0.20m wide machine bay past the dispenser), where
 #    thickness decides if there is a collision. As the cup is only 0.09m wide, its centre
 #    line alone is not enough to guarantee it clears a wall. The ellipsoid test adds the 
 #    thickness of the gripper and cup to the line test, so a collision is caught even if
@@ -39,9 +39,9 @@
 # links keep the line test only. They stay clear of the props, and adding ellisoids
 # for all seven links would increase the cost of every check. 
 #
-# first_collision() follows Lab 5's "is_collision()"": It uses the same loop over
-# trajectory rows, link segments and faces, the same 'return_once_found' option,
-# and the same list that collects every hit. 
+# first_collision() follows Lab 5's "is_collision()": It uses the same loop over
+# trajectory rows, link segments and faces, and stops at the first hit.The planner 
+# only needs to know if and what a path hits so not every hit needs to be collected.
 # Additions:
 #   * obstacles carry a name so that the GUI can report what was hit.
 #   * obstacles can be rotated as the RectangularPrism is built about the origin
@@ -198,7 +198,7 @@ class Obstacle:
     A named box obstacle, at any position and rotation.
 
     Carrying the NAME alongside the mesh is what lets the safety system report
-    "collision predicted with 'milk pitcher'" instead of a bare True. Useful
+    "collision predicted with 'milk pitcher'" instead of just True. Useful
     for the GUI and for the sequencer to know what obstacle was hit.
 
     Holds both the triangle mesh (line-plane test) and a surface point cloud 
@@ -268,7 +268,7 @@ def segment_hit(p_start, p_end, obstacle):
 
 
 def first_collision(robot, q_matrix, obstacles, skip_links=0, tool_frames=None,
-                    hits=None, return_once_found=True, tool_ellipsoids=None):
+                    tool_ellipsoids=None):
     """
     Uses lab 5's is_collision() with the lab 6 ellipsoid test added.
     The named-obstacle version of Lab 5's is_collision(), with the Lab 6
@@ -277,10 +277,6 @@ def first_collision(robot, q_matrix, obstacles, skip_links=0, tool_frames=None,
     Returns the name of the first obstacle hit along the given trajectory or
     None if the whole path is clear.
 
-    param hits: optional list. Every hit found is appended as
-        (obstacle name, point) like Lab 5's 'collisions' list
-    param return_once_found: True stops at the first hit. False keeps checking
-        the whole trajectory so 'hits' holds every contact
     param skip_links: Leading link frames to ignore. This is needed when a robot is
         MOUNTED on something that is also an obstacle, as its base frames sit inside
         that geometry and would read as a permanent hit.
@@ -293,7 +289,6 @@ def first_collision(robot, q_matrix, obstacles, skip_links=0, tool_frames=None,
         the flange their real width and height.
     """
     active = [o for o in obstacles if o.active]
-    first = None
     for q in q_matrix:
         # Get the transform of every joint (i.e. start and end of every link)
         tr = link_poses(robot, q)
@@ -312,13 +307,7 @@ def first_collision(robot, q_matrix, obstacles, skip_links=0, tool_frames=None,
                     if check == 1:
                         for triangle in triangle_list:
                             if is_intersection_point_inside_triangle(intersect_p, triangle):
-                                if hits is not None:
-                                    hits.append((obs.name, np.asarray(intersect_p)))
-                                if first is None:
-                                    first = obs.name
-                                if return_once_found:
-                                    return first
-                                break
+                                return obs.name
 
         # obstacle surface points inside the gripper / cup ellipsoids (see lab6)
         if tool_ellipsoids is not None:
@@ -326,17 +315,12 @@ def first_collision(robot, q_matrix, obstacles, skip_links=0, tool_frames=None,
                 for obs in active:
                     inside = points_inside_ellipsoid(obs.points, T_ellipsoid, radii)
                     if inside.size > 0:
-                        if hits is not None:
-                            hits.append((obs.name, obs.points[inside[0]]))
-                        if first is None:
-                            first = obs.name
-                        if return_once_found:
-                            return first
-    return first
+                        return obs.name
+    return None
 
 
 def is_collision(robot, q_matrix, obstacles, skip_links=0, tool_frames=None,
-                 hits=None, return_once_found=True, tool_ellipsoids=None):
+                 tool_ellipsoids=None):
     """Boolean form of first_collision (Lab 5's return value)."""
     return first_collision(robot, q_matrix, obstacles, skip_links, tool_frames,
-                           hits, return_once_found, tool_ellipsoids) is not None
+                           tool_ellipsoids) is not None
