@@ -7,7 +7,7 @@
 #  1. Attendee walks into a robot's swept volume.
 #       Perimeter guarding: SafetyRailing on the long sides and barriers on the
 #       end walls, every robot base at least reach + tool + payload inside it
-#       (JAKA 0.74 m (@TODO include other robots here), see workcell_layout).
+#       (JAKA 0.74m (@TODO include other robots here), see workcell_layout).
 #  2. Attendee reaches into the cell through the conveyor exit (the one opening
 #     that must stay open for trays to leave)
 #       SafetyLightCurtain pair across the exit, on stands at belt height. A
@@ -41,6 +41,8 @@ import numpy as np
 from spatialmath import SE3
 from spatialgeometry import Cuboid, Cylinder, Sphere, Mesh
 from ir_support_extra_parts import part_mesh, part_path
+
+from collisions import Obstacle
 
 from workcell_layout import (
     Z_COUNTER, Z_BELT, CONVEYOR_Y, CONVEYOR_X_START, CONVEYOR_X_END, BELT_WIDTH,
@@ -253,22 +255,21 @@ class Workcell:
         self.hand_in_pose = SE3(EXIT_X + 0.10, CONVEYOR_Y + 0.05, Z_BELT + 0.25) * SE3.Rz(pi)
         self.hand = part_mesh("hand", pose=HIDDEN)
         self.shapes.append(self.hand)
+        # The hand's collision body for the curtain beams: a Lab 5
+        # RectangularPrism the size of the 'hand' mesh (0.235x0.275x0.073m,
+        # centred 0.026, 0.023, 0.070m from the mesh origin), moved with it.
+        self._hand_local = SE3(0.0255, 0.0225, 0.0695)
+        self.hand_obstacle = Obstacle("hand", [0.235, 0.275, 0.073], HIDDEN * self._hand_local)
         self.hand_inside = False
 
     def toggle_hand(self):
         self.hand_inside = not self.hand_inside
-        self.hand.T = (self.hand_in_pose if self.hand_inside else HIDDEN).A
+        pose = self.hand_in_pose if self.hand_inside else HIDDEN
+        self.hand.T = pose.A
+        self.hand_obstacle.move_to(pose * self._hand_local)
         return self.hand_inside
 
-    def hand_box(self):
-        """World AABB (lo, hi) of the hand mesh: x -0.09..0.14, y -0.12..0.16,
-        z 0.03..0.11 in its own frame."""
-        T = SE3(self.hand.T, check=False)
-        corners = np.array([(T * SE3(x, y, z)).t for x in (-0.092, 0.143)
-                            for y in (-0.115, 0.16) for z in (0.033, 0.106)])
-        return corners.min(axis=0), corners.max(axis=0)
-
-    # e-stops, and stack light ---------------------------------------------
+    # e-stops, and stack light
     def _estops_and_indicators(self):
         # Pedestal e-stop at the collection counter on a stand at counter height
         p = ESTOP_COLLECTION_POSE
@@ -299,7 +300,7 @@ class Workcell:
         self.shapes.append(part_mesh("personMaleCasual", pose=SE3(-0.6, CELL_Y_MAX + 0.7, 0) * SE3.Rz(-pi / 2)))
         self.shapes.append(part_mesh("SafetyPerson", pose=SE3(STAFF_GATE_X, CELL_Y_MIN - 0.8, 0) * SE3.Rz(pi / 2)))
 
-    # Reserved stations for other robots (TM12, Lynxmotion, FR3) @TODO: add props when they are integrated
+    # Reserved stations for other robots (TM5700, Lynxmotion, FR3) @TODO: add props when they are integrated
     def _reserved_stations(self):
         """Translucent floor pads marking where teammates' robots will mount."""
         for name, (pose, _task) in STATIONS.items():
