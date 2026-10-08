@@ -13,4 +13,24 @@ The system features 4 collaborative robots handling multiple catering related ta
 * Anthony Fava - Lynxmotion SES-PRO
 * Kaja Katovcic - JAKA MiniCobo 
 
+# Shared workcell
+All positions live in `workcell_layout.py` (one world frame). Mount your robot at `STATIONS[...]` and place your props relative to that base frame, the way `coffee_station.py` does for the JAKA. The tray stops for each station on the conveyor and carries the order out through the light curtain to the collection zone.
+
+| File | Contents |
+| --- | --- |
+| `workcell_layout.py` | World frame, conveyor, enclosure, station base poses, safety equipment positions |
+| `workcell_scene.py` | Enclosure, conveyor and tray, collection zone, safety equipment (with the risk register), reserved robot footprints |
+| `safety_controller.py` | E-stop / light curtain / fault state machine: latched stop, separate RESET and START. Light curtain modelled as beams (Lab 6 ray casting) |
+| `collisions.py` | Lab 5 line-plane test on link, gripper and cup centre-lines, plus Lab 6 ellipsoids for the gripper and cup, against named, rotatable `RectangularPrism` obstacles |
+| `coffee_station.py` | JAKA station: bench, cup dispenser, coffee machine, cup, gripper, movable milk pitcher |
+| `jaka_motion.py` | JAKA planning: jtraj for free-space transits, RMRC for constrained Cartesian moves, active avoidance |
+| `coffee_task.py` | Frame-by-frame sequencer for the JAKA and the conveyor |
+| `coffee_demo.py` | Entry point |
+
+```
+python coffee_demo.py --plan                         # no Swift: jtraj vs RMRC table + planned sequence
+python coffee_demo.py                                # Swift demo; press START in the side panel
+python coffee_demo.py --final-q "60,-40,-100,0,50,0" # add a supplied final joint state (degrees)
+```
+
 
