@@ -34,7 +34,6 @@ class JakaMiniCobo(UTSMeshRobot):
             rtb.RevoluteDH(d=0.1593, a=0, alpha=0, qlim=[-2 * pi, 2 * pi]),
         ]
  
- 
 if __name__ == "__main__":
     import numpy as np
     import swift
