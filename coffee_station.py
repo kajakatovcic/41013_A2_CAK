@@ -45,7 +45,7 @@ GRASP_HEIGHT = 0.055 # grasp point above the cup's base
 
 PAD_TOP = 0.010 # dispenser pad surface above the counter
 DRIP_TOP = 0.020 # coffee machine drip tray surface
-TRAY_FLOOR = 0.006 # tray floor above the belt
+TRAY_FLOOR = 0.010 # tray floor above the belt (= workcell_scene.Tray.FLOOR)
 
 PHI_DISPENSER = -pi / 2
 PHI_MACHINE = 0.0
@@ -236,14 +236,13 @@ class CoffeeStation:
     def cup_dispense_pose(self):
         return self.T_dispenser * SE3(0, 0, PAD_TOP)
 
-    # -- coffee machine --------------------------------------------------------
+    # Coffee machine
     def _build_machine(self):
         """
-        Bean-to-cup machine built from primitives (no suitable mesh exists in the
-        model packs). Frame at the centre of its FRONT face on the counter, x
-        pointinginto the machine. The dispensing bay is a 0.20m wide, 0.16m deep,
-        0.18m tall recess. It has walls on both sides, the housing behind, and the
-        brew head above. The cup must go in and out on a straight horizontal line,
+        Bean-to-cup machine built from primitives. Frame at the centre of its FRONT face 
+        on the counter, x pointinginto the machine. The dispensing bay is a 0.20m wide, 
+        0.16m deep, 0.18m tall recess. It has walls on both sides, the housing behind, and 
+        the brew head above. The cup must go in and out on a straight horizontal line,
         hence why this move uses RMRC.
         """
         # The front face is 0.06m in front of the cup's brewing position. The
@@ -301,7 +300,7 @@ class CoffeeStation:
         Parked at the far end of the bench otherwise.
         """
         self.pitcher_parked = SE3(*polar_point(self.base, 0.55, 2.7, 0))
-        # In the path: on the bench between the machine and the tray, under the
+        # In the path- on the bench between the machine and the tray under the
         # middle of the full-cup carry arc.
         self.pitcher_in_path = SE3(*polar_point(self.base, 0.50, pi / 5, 0))
         self.pitcher_mesh = part_mesh("MilkPitcher", pose=self.pitcher_parked)

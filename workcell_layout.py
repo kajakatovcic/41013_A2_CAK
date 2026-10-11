@@ -12,7 +12,7 @@
 #                         attendees / viewing side (+Y)
 #     ---------------------------------------------------------------- railing
 #     |                                                              |  light
-#     |  [TM12]      [Lynxmotion]     [FAIRINO FR3]      [JAKA]       |  curtain   collection
+#     | [TM5-700]    [Lynxmotion]     [FAIRINO FR3]      [JAKA]       |  curtain   collection
 #  ==tray==>=======================conveyor==========================||=======>=  zone
 #     |  plates       food            drinks            coffee        |
 #     ---------------------------------------------------------------- railing
@@ -29,7 +29,7 @@ from spatialmath import SE3
 Z_COUNTER = 0.93
 # Conveyor (runs along +X at y = 0)
 CONVEYOR_Y = 0.0
-CONVEYOR_X_START = -4.2 # upper end behind the TM12 plate station
+CONVEYOR_X_START = -4.2 # upper end behind the TM5-700 plate station
 CONVEYOR_X_END = 3.9 # downstream end inside the collection zone
 BELT_WIDTH = 0.45 # carries a 0.35 m wide tray with a margin
 Z_BELT = Z_COUNTER # top surface of the belt
@@ -54,13 +54,20 @@ COLLECTION_ZONE_SIZE = (1.30, 1.40) # floor marking
 
 # Robot stations: base frame of each robot in the world frame.
 # Robots sit on the -Y (staff) side of the belt, facing the belt.
-# @TODO: add other robots (TM12, Lynxmotion, FR3) when they are integrated 
+# @TODO: add other robots (Lynxmotion, FR3) when they are integrated
 JAKA_X = 1.60
 JAKA_Y = -0.62 # 0.58 m from the tray's coffee slot
 
+# OMRON TM5-700 (extra scene robot, ir_support_extra_robots). Bench-mounted at
+# counter height like the JAKA: with a 0.7 m reach it cannot serve the tray
+# from the floor. Base clearance to the railing: 0.7 m reach + 0.133 m suction
+# tool + 0.115 m plate radius = 0.95 m (staff railing is 1.3 m away).
+TM5_X = -3.40
+TM5_Y = -0.55 # 0.55 m from the tray's plate slot
+
 STATIONS = {
     # name:        (base pose in world,                       task)
-    "TM12":        (SE3(-3.40, -0.85, 0.0),                   "places a plate on the tray"),
+    "TM5700":      (SE3(TM5_X, TM5_Y, Z_COUNTER),             "places a plate on the tray"),
     "Lynxmotion":  (SE3(-1.70, -0.75, Z_COUNTER),             "serves food onto the plate"),
     "FAIRINO_FR3": (SE3(-0.05, -0.75, Z_COUNTER),             "places a cold drink on the tray"),
     "JAKA":        (SE3(JAKA_X, JAKA_Y, Z_COUNTER),           "brews and places the coffee"),
@@ -68,8 +75,9 @@ STATIONS = {
 
 # Where the tray halts on the belt for each station (x of the tray centre).
 # JAKA: Halt position calculated so the coffee slot is aligned with the JAKA gripper at its home pose.
-TRAY_START_X = -0.05 # tray enters the demo at the FR3 station, already
+TRAY_START_X = -0.05 # tray enters the JAKA demo at the FR3 station, already
                      # holding the plate and drink from further up
+TRAY_ENTRY_X = -3.95 # empty tray enters at the upstream end (TM5 demo, main scene)
 
 # Safety equipment positions (world frame), chosen from the risk assessment in
 # workcell_scene.py

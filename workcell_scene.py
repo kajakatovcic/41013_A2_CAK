@@ -105,28 +105,40 @@ def _run(part, part_len, a, b, fixed, along_x, extra=None):
 class Tray:
     """
     Serving tray on the conveyor - ir_support_extra_parts 'Tray' scaled to
-    0.475 x 0.35 m. Frame at the centre of its base. Items placed on it are
+    0.475 x 0.35m. Frame at the centre of its base. Items placed on it are
     attached at a fixed local offset and move with it.
     """
     SCALE = [1.25, 1.4, 1.0]
-    FLOOR = 0.006
-    # Fixed slots, in the tray frame.
+    FLOOR = 0.010 # top of the tray floor (measured on the 'Tray' mesh)
+    # Fixed slots in the tray frame
     PLATE_SLOT = SE3(-0.11, 0.0, FLOOR)
     DRINK_SLOT = SE3(0.13, 0.10, FLOOR)
     CUP_SLOT = SE3(0.12, -0.04, FLOOR)
+    ALL_PLACEHOLDERS = ("plate", "food", "drink")
 
-    def __init__(self, x):
+    def __init__(self, x, placeholders=ALL_PLACEHOLDERS):
+        """
+        param placeholders: which items the tray starts with, standing in for
+            what upstream robots deliver until their tasks are integrated
+            (TM5-700 plate, Lynxmotion food, FR3 drink). The JAKA demo starts
+            with all three; the TM5 demo and main scene start with an empty
+            tray because the TM5 places the real plate. @TODO
+        """
         self.mesh = Mesh(str(part_path("Tray")), scale=self.SCALE, color=(0.20, 0.35, 0.55, 1.0))
         self.attached = [] # (object with set_pose, local SE3)
-        # Placeholders for what the upstream robots deliver (TM12 plate,
-        # Lynxmotion food, FR3 drink) until their tasks are integrated. @TODO
-        plate = Mesh(str(part_path("Plate")), scale=[0.5, 0.5, 0.5])
-        food = part_mesh("Lunchbox")
-        drink = part_mesh("JuiceBoxOrange")
-        self._meshes = [self.mesh, plate, food, drink]
-        self.attach(_MeshItem(plate), self.PLATE_SLOT)
-        self.attach(_MeshItem(food), self.PLATE_SLOT * SE3(0, 0, 0.012))
-        self.attach(_MeshItem(drink), self.DRINK_SLOT)
+        self._meshes = [self.mesh]
+        if "plate" in placeholders:
+            plate = Mesh(str(part_path("Plate")), scale=[0.5, 0.5, 0.5])
+            self._meshes.append(plate)
+            self.attach(_MeshItem(plate), self.PLATE_SLOT)
+        if "food" in placeholders:
+            food = part_mesh("Lunchbox")
+            self._meshes.append(food)
+            self.attach(_MeshItem(food), self.PLATE_SLOT * SE3(0, 0, 0.012))
+        if "drink" in placeholders:
+            drink = part_mesh("JuiceBoxOrange")
+            self._meshes.append(drink)
+            self.attach(_MeshItem(drink), self.DRINK_SLOT)
         self.set_x(x)
 
     def attach(self, item, local):
@@ -164,7 +176,7 @@ class _MeshItem:
 class Conveyor:
     """Belt conveyor built from primitives (cuboids)."""
 
-    def __init__(self):
+    def __init__(self, tray_x=TRAY_START_X, tray_placeholders=Tray.ALL_PLACEHOLDERS):
         self.shapes = []
         length = CONVEYOR_X_END - CONVEYOR_X_START
         xc = (CONVEYOR_X_END + CONVEYOR_X_START) / 2
@@ -184,7 +196,7 @@ class Conveyor:
         for x in (CONVEYOR_X_START, CONVEYOR_X_END):
             self.shapes.append(Cylinder(radius=0.035, length=BELT_WIDTH, color=(0.5, 0.5, 0.5, 1.0),
                                         pose=SE3(x, CONVEYOR_Y, Z_BELT - 0.035) * SE3.Rx(pi / 2)))
-        self.tray = Tray(TRAY_START_X)
+        self.tray = Tray(tray_x, tray_placeholders)
 
     def add_to_env(self, env):
         for s in self.shapes:
@@ -200,9 +212,18 @@ class Workcell:
     intruder, and the stack-light beacon.
     """
 
-    def __init__(self):
+    # Stations whose robot and props are built by their own station file, so
+    # they get no "reserved" floor pad.
+    IMPLEMENTED = ("JAKA", "TM5700")
+
+    def __init__(self, tray_x=TRAY_START_X, tray_placeholders=Tray.ALL_PLACEHOLDERS):
+        """
+        param tray_x, tray_placeholders: where the tray starts and what is on
+            it (see Tray). The current "TRAY_START_X" and "ALL_PLACEHOLDERS"
+            suits only the JAKA. 
+        """
         self.shapes = []
-        self.conveyor = Conveyor()
+        self.conveyor = Conveyor(tray_x, tray_placeholders)
         self._floor()
         self._enclosure()
         self._light_curtain()
@@ -300,11 +321,11 @@ class Workcell:
         self.shapes.append(part_mesh("personMaleCasual", pose=SE3(-0.6, CELL_Y_MAX + 0.7, 0) * SE3.Rz(-pi / 2)))
         self.shapes.append(part_mesh("SafetyPerson", pose=SE3(STAFF_GATE_X, CELL_Y_MIN - 0.8, 0) * SE3.Rz(pi / 2)))
 
-    # Reserved stations for other robots (TM5700, Lynxmotion, FR3) @TODO: add props when they are integrated
+    # Reserved stations for other robots ( Lynxmotion, FR3) @TODO: add props when they are integrated
     def _reserved_stations(self):
-        """Translucent floor pads marking where teammates' robots will mount."""
+        """ floor pads marking where unimplemented robots will mount."""
         for name, (pose, _task) in STATIONS.items():
-            if name == "JAKA":
+            if name in self.IMPLEMENTED:
                 continue
             self.shapes.append(Cuboid(scale=[0.9, 0.9, 0.005], color=(0.3, 0.5, 0.9, 0.35),
                                       pose=SE3(pose.t[0], pose.t[1], 0.006)))
