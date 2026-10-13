@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 
 from lynx_station import build_lynx
-from lynx_task import LynxTask
+from lynx_task import LynxTask, COMPARE_CASES
 from safety_controller import SafetyController
 from workcell_scene import Workcell
 from workcell_layout import TRAY_ENTRY_X
@@ -23,6 +23,7 @@ def main():
 
     if args.plan:
         task = LynxTask(robot, planner, station, cell.conveyor.tray, SafetyController())
+        plan_report.compare_methods(planner, task.job, COMPARE_CASES)
         plan_report.print_plan(task, task.lanes[0], "PLANNED LYNXMOTION SEQUENCE")
         return
 

@@ -293,8 +293,11 @@ def first_collision(robot, q_matrix, obstacles, skip_links=0, tool_frames=None,
         # Get the transform of every joint (i.e. start and end of every link)
         tr = link_poses(robot, q)
         T_flange = tr[-1]
+        # Empty-list case patched to tend to Lynxmotion failure
         if tool_frames is not None:
-            tr = np.concatenate([tr, np.asarray(tool_frames(T_flange))], axis=0)
+            extra = np.asarray(tool_frames(T_flange))
+            if extra.size:
+                tr = np.concatenate([tr, extra], axis=0)
 
         # go through each link and also each triangle face of each obstacle (see lab5)
         for i in range(skip_links, np.shape(tr)[0] - 1):
