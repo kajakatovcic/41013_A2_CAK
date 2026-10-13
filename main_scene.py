@@ -37,6 +37,8 @@ from coffee_demo import build_jaka, pitcher_toggle
 from coffee_task import CoffeeJob
 from tm5_demo import build_tm5
 from tm5_task import PlateJob
+from lynx_station import build_lynx
+from lynx_task import LynxJob
 from task_sequencer import Segment, RobotLane, ConveyorLane, TaskSequencer
 from safety_controller import SafetyController
 from workcell_scene import Workcell
@@ -53,6 +55,8 @@ def build_scene(safety):
 
     tm5, tm5_station, tm5_planner = build_tm5()
     jaka, jaka_station, jaka_planner = build_jaka()
+    lynx, lynx_station, lynx_planner = build_lynx()
+    lynx_job = LynxJob(lynx_station, tray)
     tm5.q = np.zeros(6)
     jaka.q = np.zeros(6)
 
@@ -63,6 +67,8 @@ def build_scene(safety):
     conveyor = [
         S("convey", "tray -> TM5 station", x=plate_job.tray_stop_x, sets="tray_at_tm5"),
         # @TODO: Lynxmotion and FR3 stops go here in order along the belt.
+        S("convey", "tray -> Lynxmotion station", x=lynx_job.tray_stop_x,
+          requires="plate_placed", sets="tray_at_lynx"),
         S("convey", "tray -> JAKA station", x=coffee_job.tray_stop_x,
           requires="plate_placed", sets="tray_at_jaka"),
         S("convey", "tray -> collection zone", x=COLLECTION_X,
@@ -73,10 +79,11 @@ def build_scene(safety):
     lanes = [
         RobotLane("TM5", tm5, tm5_planner, plate_job, plate_job.segments()),
         RobotLane("JAKA", jaka, jaka_planner, coffee_job, coffee_job.segments()),
+        RobotLane("Lynxmotion", lynx, lynx_planner, lynx_job, lynx_job.segments()),
         ConveyorLane("conveyor", tray, conveyor),
     ]
     sequencer = TaskSequencer(safety, lanes)
-    parts = [tm5_station, tm5, jaka_station, jaka]
+    parts = [tm5_station, tm5, lynx_station, jaka_station, jaka]
     return cell, sequencer, parts, jaka_station
 
 
