@@ -70,7 +70,7 @@ def build_scene(safety):
         S("convey", "tray -> Lynxmotion station", x=lynx_job.tray_stop_x,
           requires="plate_placed", sets="tray_at_lynx"),
         S("convey", "tray -> JAKA station", x=coffee_job.tray_stop_x,
-          requires="plate_placed", sets="tray_at_jaka"),
+          requires="food_placed", sets="tray_at_jaka"),
         S("convey", "tray -> collection zone", x=COLLECTION_X,
           requires="coffee_placed", sets="delivered"),
     ]
@@ -78,8 +78,8 @@ def build_scene(safety):
     # FINAL_Q_DEG in coffee_task.py (JAKA) and tm5_task.py (TM5).
     lanes = [
         RobotLane("TM5", tm5, tm5_planner, plate_job, plate_job.segments()),
+                RobotLane("Lynxmotion", lynx, lynx_planner, lynx_job, lynx_job.segments()),
         RobotLane("JAKA", jaka, jaka_planner, coffee_job, coffee_job.segments()),
-        RobotLane("Lynxmotion", lynx, lynx_planner, lynx_job, lynx_job.segments()),
         ConveyorLane("conveyor", tray, conveyor),
     ]
     sequencer = TaskSequencer(safety, lanes)
