@@ -1,6 +1,4 @@
-# Shared Swift set-up and run loop for every demo (e.g coffee_demo.py,
-# tm5_demo.py) and for main_scene.py so they all have the same safety panel
-# and behave the same way.
+# Shared Swift set-up and run loop for every station demo and main scene
 #
 # Swift panel controls (the simulated GUI e-stop and safety inputs):
 #   E-STOP/Release E-stop/RESET/START-RESUME
@@ -44,6 +42,23 @@ def make_safety(cell):
     safety = SafetyController(beacon=cell.beacon, curtain_field=cell.curtain_field,
                               label=state_label)
     return safety, state_label, task_label
+
+
+def obstacle_button(desc, toggle, sequencer, safety, what):
+    """
+    A panel button that moves a station's movable obstacle into/out of a
+    robot's path (the JAKA's milk pitcher). It tells the sequencer that 
+    the world changed so the current move is rechecked for collisions and 
+    replanned around the obstacle.
+    toggle = the stations 'toggle' method and returns True when now in the
+    path.
+    Returns a (description, callback) pair for add_controls
+    """
+    def cb():
+        placed = toggle()
+        sequencer.notify_world_changed()
+        safety.note(f"{what} placed in the path." if placed else f"{what} removed.")
+    return desc, cb
 
 
 def add_controls(env, safety, cell, state_label, task_label, extra_buttons=()):

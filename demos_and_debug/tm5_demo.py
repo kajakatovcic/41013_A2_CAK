@@ -1,38 +1,37 @@
 """
 OMRON TM5-700 plate station in the shared workcell
 
-    python tm5_demo.py                          # Swift demo, press START in the panel
-    python tm5_demo.py --plan                   # no Swift: plan every move + print
+    python demos_and_debug/tm5_demo.py          # Swift demo, press START in the panel
+    python demos_and_debug/tm5_demo.py --plan   # no Swift: plan every move + print
                                                 # the jtraj vs RMRC comparison
 
 Sequence: An empty tray arrives from the upper end of the conveyor belt to the TM5 
 station. During this, the TM5 lowers its 'suction cup' ont othe top plate in the 
 dispenser, lifts it straight up between the guide posts, carries it level to the 
 tray and lowers it into the tray's plate slot.
-The conveyor then takes the tray on to the collection zone. 
-NOTE: currnetly in main_scene.py it stops at the JAKA as the other two bots have
-not yet been implemented.
+The conveyor then takes the tray on to the collection zone. In main_scene.py
+the tray instead continues to the Lynxmotion (food) and then the JAKA (coffee).
 
 The FINAL JOINT STATE can be set by FINAL_Q_DEG in tm5_task.py
 """
 
+import os
+import sys
+# This script lives in demos_and_debug/: put the repo root (one level up) on
+# the import path so the shared workcell modules are found.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import argparse
 
 import numpy as np
-from ir_support_extra_robots.robots import OmronTM5700
 
-from tm5_motion import TM5Planner
-from tm5_station import PlateStation
+from tm5_station import build_tm5
 from tm5_task import TM5Task
 from safety_controller import SafetyController
 from workcell_scene import Workcell
-from workcell_layout import STATIONS, Z_COUNTER, TRAY_ENTRY_X
+from workcell_layout import TRAY_ENTRY_X
 import cell_runner
 import plan_report
-
-# Link frames must stay 5 cm above the counter (the TM5's wrist is larger
-# than the JAKA's).
-MIN_LINK_Z = Z_COUNTER + 0.05
 
 # The moves compared in the --plan report: (label, start, goal, RMRC mode, holding)
 COMPARE_CASES = [
@@ -41,15 +40,6 @@ COMPARE_CASES = [
     ("carry plate to tray", "above_stack", "above_tray", "arc", True),
     ("lower plate onto tray", "above_tray", "on_tray", "line", True),
 ]
-
-
-def build_tm5(obstacles=None):
-    """The TM5-700, its plate station and its planner (also used by main_scene.py)."""
-    base = STATIONS["TM5700"][0]
-    robot = OmronTM5700(base=base)
-    station = PlateStation(base)
-    planner = TM5Planner(robot, station.obstacles if obstacles is None else obstacles, MIN_LINK_Z)
-    return robot, station, planner
 
 
 def main():

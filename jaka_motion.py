@@ -11,7 +11,7 @@
 #   RMRC (resolved motion rate control, Cartesian) via plan_rmrc() where tool path 
 #   and orientation is critical
 #
-#   Measured on this robot (python coffee_demo.py --plan prints the table):
+#   Measured on this robot (python demos_and_debug/coffee_demo.py --plan prints table):
 #       * jtraj between the same two poses sags 6-12mm BELOW the straight line.
 #         The cup slides into the bay 5mm above the drip grate so jtraj would
 #         drive it into the grate. RMRC stays within 0.1mm of the line.
@@ -59,10 +59,10 @@ MANIP_EPSILON = 0.004
 # Radii are along the TOOL axes: x points down (cup axis), y is the finger
 # closing direction, z points forward from the flange.
 #
-# Why ellipsoids here: the gripper is 0.10 m wide and the cup is 0.09m wide.
-# Their centrelines can pass 4-5cm from a wall that the real part would hit
-# sp a line test would either miss those contacts or needs padding. An ellispid
-# carries width.
+# Ellipsoids are used here as the gripper is ~0.01m wider than the cup.
+# Their centrelines can pass 4-5cm from a wall that the real part would 
+# hit so a line test would miss those contacts. An allipsoid carries 
+# width so it is used instead.
 # Why not ellipsoids alone: the obstacle side is a point cloud and a sampled
 # surface can be passed between points. The centre-lines stay in the lab 5 test
 # for this reason
@@ -80,7 +80,7 @@ GRIPPER_ELLIPSOID_RADII = (0.05, 0.08, 0.09) # tool x, y, z (m)
 # (0.0575/0.085)^2 + (0.046/0.065)^2 = 0.96 < 1. The ellipsoid hangs a little
 # below the cup's base. the surfaces the cup rests on are not
 # obstacles so that does not read as a collision.
-CUP_ELLIPSOID_RADII = (0.085, 0.065, 0.065)    # tool x (vertical), y, z (m)
+CUP_ELLIPSOID_RADII = (0.085, 0.065, 0.065) # tool x (vertical), y, z (m)
 
 JAKA_SETTINGS = PlannerSettings(
     tool=TOOL,

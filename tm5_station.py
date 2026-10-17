@@ -25,7 +25,10 @@ from spatialgeometry import Cuboid, Cylinder, Mesh
 from ir_support_extra_parts import part_path
 
 from collisions import Obstacle
-from tm5_motion import suction_pose, ADAPTER_HEIGHT, CUP_SCALE, PLATE_CONTACT
+from ir_support_extra_robots.robots import OmronTM5700
+
+from tm5_motion import suction_pose, TM5Planner, ADAPTER_HEIGHT, CUP_SCALE, PLATE_CONTACT
+from workcell_layout import STATIONS, Z_COUNTER
 from workcell_scene import Tray
 
 # Plate dispenser (in the TM5 base frame)
@@ -171,3 +174,17 @@ class PlateStation:
         for s in self.shapes:
             env.add(s)
         self.tool.add_to_env(env)
+
+
+# Link frames must stay 5cm above the counter (the TM5's wrist is larger
+# than the JAKA's).
+MIN_LINK_Z = Z_COUNTER + 0.05
+
+
+def build_tm5(obstacles=None):
+    """The TM5-700, its plate station and its planner."""
+    base = STATIONS["TM5700"][0]
+    robot = OmronTM5700(base=base)
+    station = PlateStation(base)
+    planner = TM5Planner(robot, station.obstacles if obstacles is None else obstacles, MIN_LINK_Z)
+    return robot, station, planner

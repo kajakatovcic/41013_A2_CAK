@@ -21,8 +21,7 @@ from workcell_scene import Tray
 
 # Final JAKA joint state
 # a jtraj from 'ready' to this joint state, in deg (joints 1-6). 
-# Supply an optional final joint state here. It is used by both coffee_demo.py and
-# main_scene.py. Set to None to end the sequence at 'ready'.
+# Supply an optional final joint state here. Set to None to end the sequence at 'ready'.
 # A goal outside the limits stops the cell with a fault. A goal whose direct
 # path would collide is re-planned through a waypoint
 FINAL_Q_DEG = [60, -40, -100, 0, 50, 0]
@@ -117,7 +116,7 @@ class CoffeeJob:
 
 class CoffeeTask(TaskSequencer):
     """The JAKA station by itself.
-    JAKA lane + conveyor lane (coffee_demo.py).
+    JAKA lane + conveyor lane (demos_and_debug/coffee_demo.py).
     """
 
     def __init__(self, robot, planner, station, tray, safety, log=print):

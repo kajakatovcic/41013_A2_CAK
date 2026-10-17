@@ -1,3 +1,9 @@
+import os
+import sys
+# This script lives in demos_and_debug/: put the repo root (one level up) on
+# the import path so the shared workcell modules are found.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import numpy as np
 from spatialmath import SE3
 
@@ -7,7 +13,11 @@ from lynx_task import LynxJob, IK_SEEDS, Q_READY
 
 DEG = np.pi / 180
 
-def try_ik(robot, T, seeds):
+def try_ik(robot, planner, T, seeds):
+    """'#' reachable within joint limits, 'L' reachable only outside them,
+    '.' unreachable. T is a world TCP pose; like the shared planner, it is
+    converted to the flange with the inverse tool transform."""
+    T = T * planner.settings.tool.inv()
     result = "."
     lo, hi = robot.qlim[0], robot.qlim[1]
     for q0 in seeds:
@@ -48,7 +58,7 @@ def main():
     job = LynxJob(station, None)
     print("\nJOB TARGETS (r, bearing, h) in the robot base frame, and whether the arm reaches them")
     for name, (r, phi, h) in job.targets.items():
-        flag = try_ik(robot, job.target_pose(name), job.ik_seeds(name))
+        flag = try_ik(robot, planner, job.target_pose(name), job.ik_seeds(name))
         print(f"  {name:16s} r={r:.3f}  phi={np.degrees(phi):7.1f} deg  h={h:7.3f}   {flag}")
 
     phi = 135 * DEG
@@ -61,7 +71,7 @@ def main():
         row = []
         for r in rs:
             Tt = robot.base * SE3(r * np.cos(phi), r * np.sin(phi), h) * SE3.Rz(phi)
-            row.append(f"  {try_ik(robot, Tt, seeds)}  ")
+            row.append(f"  {try_ik(robot, planner, Tt, seeds)}  ")
         print(f"  {h:5.2f}  " + "".join(row))
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@
 #  1. Attendee walks into a robot's swept volume.
 #       Perimeter guarding: SafetyRailing on the long sides and barriers on the
 #       end walls, every robot base at least reach + tool + payload inside it
-#       (JAKA 0.74m (@TODO include other robots here), see workcell_layout).
+#       (see workcell_layout).
 #  2. Attendee reaches into the cell through the conveyor exit (the one opening
 #     that must stay open for trays to leave)
 #       SafetyLightCurtain pair across the exit, on stands at belt height. A
@@ -104,8 +104,8 @@ def _run(part, part_len, a, b, fixed, along_x, extra=None):
 
 class Tray:
     """
-    Serving tray on the conveyor - ir_support_extra_parts 'Tray' scaled to
-    0.475 x 0.35m. Frame at the centre of its base. Items placed on it are
+    Serving tray on the conveyor - ir_support_extra_parts 'Tray' scaled. 
+    Frame at the centre of its base. Items placed on it are
     attached at a fixed local offset and move with it.
     """
     SCALE = [1.25, 1.4, 1.0]
@@ -121,8 +121,9 @@ class Tray:
         param placeholders: which items the tray starts with, standing in for
             what upstream robots deliver until their tasks are integrated
             (TM5-700 plate, Lynxmotion food, FR3 drink). The JAKA demo starts
-            with all three; the TM5 demo and main scene start with an empty
-            tray because the TM5 places the real plate. @TODO
+            with all three. The TM5 demo, Lynxmotion demo and main scene start
+            with an empty tray because the robots place the real items.
+            @TODO: the FR3's drink is still missing from the main scene.
         """
         self.mesh = Mesh(str(part_path("Tray")), scale=self.SCALE, color=(0.20, 0.35, 0.55, 1.0))
         self.attached = [] # (object with set_pose, local SE3)
@@ -204,7 +205,8 @@ class Conveyor:
         self.tray.add_to_env(env)
 
 
-# The whole shared cell @TODO: add the other robots and their props when they are integrated
+# The whole shared cell. Robots and their props are built by their own
+# station files (coffee_station.py, tm5_station.py, lynx_station.py).
 class Workcell:
     """
     Everything except the robots and their station props. Holds handles the
@@ -214,7 +216,7 @@ class Workcell:
 
     # Stations whose robot and props are built by their own station file, so
     # they get no "reserved" floor pad.
-    IMPLEMENTED = ("JAKA", "TM5700")
+    IMPLEMENTED = ("JAKA", "TM5700", "Lynxmotion")
 
     def __init__(self, tray_x=TRAY_START_X, tray_placeholders=Tray.ALL_PLACEHOLDERS):
         """
@@ -321,7 +323,7 @@ class Workcell:
         self.shapes.append(part_mesh("personMaleCasual", pose=SE3(-0.6, CELL_Y_MAX + 0.7, 0) * SE3.Rz(-pi / 2)))
         self.shapes.append(part_mesh("SafetyPerson", pose=SE3(STAFF_GATE_X, CELL_Y_MIN - 0.8, 0) * SE3.Rz(pi / 2)))
 
-    # Reserved stations for other robots ( Lynxmotion, FR3) @TODO: add props when they are integrated
+    # Reserved stations for robots not yet integrated (currently the FR3)
     def _reserved_stations(self):
         """ floor pads marking where unimplemented robots will mount."""
         for name, (pose, _task) in STATIONS.items():

@@ -132,8 +132,9 @@ def link_poses(robot, q=None) -> np.ndarray:
     Uses fkine_all() to get the tranforms of all joint frames (start and end
     of every link)
     """
-    frames = robot.fkine_all() if q is None else robot.fkine_all(q)
-    return np.asarray(frames.A) if hasattr(frames, "A") else np.asarray(frames)
+    if q is None:
+        return np.asarray(robot.fkine_all().A)
+    return np.asarray(robot.fkine_all(q).A)
 
 
 def make_obstacle_mesh(lwh, pose):

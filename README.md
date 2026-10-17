@@ -31,27 +31,28 @@ Each robot has a station demo that runs on its own and `main_scene.py` runs ever
 | `jaka_motion.py` | JAKA planner settings: gripper, side grasp, speeds, gripper/cup collision shapes |
 | `coffee_station.py` | JAKA station: bench, cup dispenser, coffee machine, cup, gripper, movable milk pitcher |
 | `coffee_task.py` | JAKA job (coffee segments, gripper and brew actions) |
-| `coffee_demo.py` | JAKA station demo |
 | `tm5_motion.py` | TM5-700 planner settings: suction tool, tool-down grasp, speeds, tool/plate collision shapes |
 | `tm5_station.py` | TM5-700 station: bench, plate dispenser with guide posts, plates, suction tool |
 | `tm5_task.py` | TM5-700 job (plate segments, suction actions) |
-| `tm5_demo.py` | TM5-700 station demo |
-| `main_scene.py` | Whole cell: TM5-700 plate, (other two bots here), then JAKA coffee, then collection |
+| `lynx_motion.py` | Lynxmotion planner settings: gripper, tool-down grasp, speed, gripper/cookie collision shapes |
+| `lynx_station.py` | Lynxmotion station: bench, cookie board, cookies, movable cookie jar |
+| `lynx_task.py` | Lynxmotion job (cookie segments, gripper actions) |
+| `main_scene.py` | Whole cell: TM5-700 plate, Lynxmotion cookie, (FR3 drink to come), JAKA coffee, then collection |
+| `demos_and_debug/` | Each station's demo (`coffee_demo.py`, `tm5_demo.py`, `lynx_demo.py`) plus test and debug scripts |
 
 ```
-python coffee_demo.py --plan                         # no Swift: jtraj vs RMRC table + planned sequence
-python coffee_demo.py                                # Swift demo: press START in the side panel
-python tm5_demo.py --plan                            # the same for the TM5-700
-python tm5_demo.py
-python main_scene.py --plan                          # every robot's planned sequence
-python main_scene.py                                 # the whole cell
+python main_scene.py --plan                              # every robot's planned sequence, no Swift
+python main_scene.py                                     # the whole cell: press START in the side panel
+python demos_and_debug/coffee_demo.py --plan             # one station: jtraj vs RMRC table + planned sequence
+python demos_and_debug/coffee_demo.py                    # one station in Swift
+python demos_and_debug/tm5_demo.py                       # (--plan works for every demo)
+python demos_and_debug/lynx_demo.py
 ```
 
 | Robot | File |
 | --- | --- |
-| JAKA MiniCobo | `coffee_task.py` |
 | TM5-700 | `tm5_task.py` |
-
-To add a robot: write its planner settings (like `tm5_motion.py`), a station and a job with `segments()`, `target_pose`, `target_polar`, `ik_seeds`, `run_action` and `update_visuals` (like `tm5_station.py` and `tm5_task.py`), then add its lane and conveyor stop in `main_scene.py`. If the robot model already includes its tool in `fkine` (the Lynxmotion does), set `tool=SE3()` in its settings.
+| Lynxmotion SES-PRO | `lynx_task.py` |
+| JAKA MiniCobo | `coffee_task.py` |
 
 

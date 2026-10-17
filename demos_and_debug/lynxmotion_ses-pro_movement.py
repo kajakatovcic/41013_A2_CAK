@@ -1,3 +1,9 @@
+import os
+import sys
+# This script lives in demos_and_debug/: put the repo root (one level up) on
+# the import path so the shared workcell modules are found.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import sys
 import numpy as np
 import roboticstoolbox as rtb

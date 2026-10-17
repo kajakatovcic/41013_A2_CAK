@@ -4,8 +4,7 @@
 #   conveyor: bring the empty tray to the TM5 -> (wait for the plate) -> keep moving
 #
 # PlateJob is the TM5 station's part of the task (its segments and suction
-# actions). It connects to the shared TaskSequencer, so the same job runs in
-# tm5_demo.py on its own and in main_scene.py with every robot.
+# actions). It connects to the shared TaskSequencer.
 # The lanes synchronise via flags. i.e. the carry to the tray waits for
 # 'tray_at_tm5' and the conveyor waits for 'plate_placed'.
 
@@ -22,9 +21,8 @@ SUCTION_FRAMES = 8 # frames for realistic suction
 
 
 # Can supply final joint state as a q in degrees 
-# used in both tm5_demo and main_scene
+# used in both demos_and_debug/tm5_demo.py and main_scene.py
 # If set to None the sequences ends with the TM5 at a ready pose
-# Joint limits: J1 +-270, J2 +-180, J3 +-155, J4 +-180, J5 +-180, J6 +-270
 # A goal outside the limits stops the cell with a fault. A goal whose direct
 # path would collide is re-planned through a raised via-point.
 FINAL_Q_DEG = [135, 60, -90, 30, 90, 0]
@@ -99,7 +97,7 @@ class PlateJob:
 
 
 class TM5Task(TaskSequencer):
-    """The TM5 station on its own - TM5 lane + conveyor lane (tm5_demo.py)"""
+    """The TM5 station on its own. TM5 lane + conveyor lane (demos_and_debug/tm5_demo.py)"""
 
     def __init__(self, robot, planner, station, tray, safety, log=print):
         self.tray = tray

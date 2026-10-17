@@ -29,7 +29,9 @@ from spatialgeometry import Cuboid, Cylinder, Sphere, Mesh
 from ir_support_extra_parts import part_mesh, part_path
 
 from collisions import Obstacle
-from jaka_motion import side_grasp_pose
+from jakaminicobo import JakaMiniCobo
+from jaka_motion import side_grasp_pose, JakaPlanner
+from workcell_layout import STATIONS, Z_COUNTER
 from workcell_scene import Indicator, LAMP_COLOURS, HIDDEN
 
 
@@ -328,3 +330,16 @@ class CoffeeStation:
         self.machine_light.add_to_env(env)
         self.gripper.add_to_env(env)
         self.cup.add_to_env(env)
+
+
+# Link frames must stay 3cm above the counter - the wrist housing radius.
+MIN_LINK_Z = Z_COUNTER + 0.03
+
+
+def build_jaka(obstacles=None):
+    """The JAKA, its coffee station and its planner (coffee_demo.py and main_scene.py)."""
+    base = STATIONS["JAKA"][0]
+    robot = JakaMiniCobo(base=base)
+    station = CoffeeStation(base)
+    planner = JakaPlanner(robot, station.obstacles if obstacles is None else obstacles, MIN_LINK_Z)
+    return robot, station, planner

@@ -118,8 +118,9 @@ class PlannerSettings:
 class MotionPlanner:
     """
     jtraj and RMRC planning with joint-limit, floor and collision checks +
-    active avoidance. Used for all robots.
-    
+    active avoidance. Used for all robots. their fkine, fkine_all, jacob0 
+    and ikine_LM all work in  the world frame including the base pose.
+
     param robot: robot model (.base is the station frame)
     param obstacles: list of collisions.Obstacle shared with the scene. List
         is used fo rplanning so obstacles added/moved later are seen

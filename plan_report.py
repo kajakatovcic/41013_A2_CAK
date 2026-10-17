@@ -24,8 +24,16 @@ def compare_methods(planner, job, cases, title="JTRAJ vs RMRC on the same moves"
     print(f"{'move':24s}{'method':7s}{'steps':>6s}{'path err':>10s}{'dip':>9s}{'max tilt':>11s}"
           f"{'peak v':>10s}{'min manip':>11s}   collision check")
     for label, a, b, mode, holding in cases:
-        q_a = planner.solve_ik(job.target_pose(a), np.zeros(planner.robot.n), job.ik_seeds(a))
-        q_b = planner.solve_ik(job.target_pose(b), q_a, job.ik_seeds(b))
+        # IK for the start pose is solved from all-zero joints, unless the job
+        # says where its arm normally is (report_start) so the comparison
+        # uses the same IK branch as the real sequence.
+        q0 = job.report_start(a) if hasattr(job, "report_start") else np.zeros(planner.robot.n)
+        q_a = planner.solve_ik(job.target_pose(a), q0, job.ik_seeds(a))
+        q_b = None if q_a is None else planner.solve_ik(job.target_pose(b), q_a, job.ik_seeds(b))
+        if q_a is None or q_b is None:
+            print(f"{label:24s}IK failed for '{a if q_a is None else b}' (unreachable or "
+                  f"out of joint limits) - cannot compare")
+            continue
         T_a = planner.tcp(q_a)
         x_ref, yaw_ref = planner.cartesian_path(T_a, job.target_polar(b), mode)
         # Dense reference path for the deviation measure

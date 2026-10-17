@@ -1,9 +1,9 @@
 """
 Smooth Oper-Caterer: JAKA MiniCobo coffee station in the shared workcell.
 
-    python coffee_demo.py                       # Swift demo, press START in the panel
-    python coffee_demo.py --plan                # no Swift: plan every move + print
-                                                # the jtraj vs RMRC comparison
+    python demos_and_debug/coffee_demo.py           # Swift demo, press START in the panel
+    python demos_and_debug/coffee_demo.py --plan    # no Swift: plan every move + print
+                                                    # the jtraj vs RMRC comparison
 
 The final pose is set by FINAL_Q_DEG at the top of coffee_task.py (degrees). 
 Change it there. Used by both demo and main scene
@@ -19,31 +19,22 @@ dispenser, brews a coffee, carries it level to the tray, and the conveyor takes
 the finished order out through the light curtain to the collection zone.
 """
 
+import os
+import sys
+# This script lives in demos_and_debug/: put the repo root (one level up) on
+# the import path so the shared workcell modules are found.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import argparse
 
 import numpy as np
 
-from jakaminicobo import JakaMiniCobo
-from jaka_motion import JakaPlanner
-from coffee_station import CoffeeStation, POSES, IK_SEEDS
+from coffee_station import build_jaka, POSES, IK_SEEDS
 from coffee_task import CoffeeTask
 from safety_controller import SafetyController
 from workcell_scene import Workcell
-from workcell_layout import STATIONS, Z_COUNTER
 import cell_runner
 import plan_report
-
-# Link frames must stay 3cm above the counter - the wrist housing radius.
-MIN_LINK_Z = Z_COUNTER + 0.03
-
-
-def build_jaka(obstacles=None):
-    """The JAKA, its coffee station and its planner (also used by main_scene.py)."""
-    base = STATIONS["JAKA"][0]
-    robot = JakaMiniCobo(base=base)
-    station = CoffeeStation(base)
-    planner = JakaPlanner(robot, station.obstacles if obstacles is None else obstacles, MIN_LINK_Z)
-    return robot, station, planner
 
 
 def build():
@@ -92,18 +83,10 @@ def main():
     # The JAKA's final joint state comes from FINAL_Q_DEG in coffee_task.py.
     task = CoffeeTask(robot, planner, station, cell.conveyor.tray, safety)
     cell_runner.add_controls(env, safety, cell, state_label, task_label,
-                             [("Milk pitcher in path (toggle)", pitcher_toggle(station, task, safety))])
+                             [cell_runner.obstacle_button("Milk pitcher in path (toggle)",
+                                                          station.toggle_pitcher, task, safety,
+                                                          "Milk pitcher")])
     cell_runner.run(env, safety, cell, curtain, task, task_label)
-
-
-def pitcher_toggle(station, sequencer, safety):
-    """Button callback - put the milk pitcher in / take it out of the JAKA's
-    carry path and tell the sequencer the world changed so it re-checks."""
-    def toggle():
-        placed = station.toggle_pitcher()
-        sequencer.notify_world_changed()
-        safety.note("Milk pitcher placed in the carry path." if placed else "Milk pitcher removed.")
-    return toggle
 
 
 if __name__ == "__main__":

@@ -1,13 +1,19 @@
 """
 Explains why 'lower onto cookie' fails (no Swift needed).
 
-    python lynx_debug.py
+    python demos_and_debug/lynx_debug.py
 
 Prints, for the hover pose and the pick pose: the joint angles, the fingertip height and the height
 of every link frame above the counter. Then it plans the straight-down move the way the planner does
 and reports the real reason each attempt is rejected, plus a check that the Jacobian matches the
 forward kinematics (they disagree if the model's built-in tool is not handled the same way in both).
 """
+
+import os
+import sys
+# This script lives in demos_and_debug/: put the repo root (one level up) on
+# the import path so the shared workcell modules are found.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 
@@ -21,6 +27,12 @@ job = LynxJob(station, None)
 names = ["base"] + [l.name for l in robot.links]
 
 
+def q_for(name):
+    """Joint angles for a named target, solved the way the planner does
+    (ikine_LM, joint limits, the job's seeds)."""
+    return planner.solve_ik(job.target_pose(name), np.zeros(robot.n), job.ik_seeds(name))
+
+
 def heights(q):
     """Height of every frame fkine_all returns, relative to the counter top (m)."""
     return [float(f.t[2]) - Z_COUNTER for f in list(robot.fkine_all(q))]
@@ -29,7 +41,7 @@ def heights(q):
 print(f"Planner requires every frame above counter + {MIN_LINK_Z - Z_COUNTER:.3f} m (except the base)\n")
 
 for name in ("above_cookie_0", "pick_0"):
-    q = job.q_goal.get(name)
+    q = q_for(name)
     print(f"== {name}  target (r, phi, h) = {tuple(round(v, 3) for v in job.targets[name])}")
     if q is None:
         print("   no tool-down solution found\n")
@@ -43,7 +55,7 @@ for name in ("above_cookie_0", "pick_0"):
         print(f"   {label:14s} {h:7.3f} m{flag}")
     print()
 
-q0 = job.q_goal.get("above_cookie_0")
+q0 = q_for("above_cookie_0")
 if q0 is not None:
     print("== JACOBIAN vs FORWARD KINEMATICS at the hover pose")
     J = robot.jacob0(q0)[:3]

@@ -2,9 +2,11 @@ import numpy as np
 from spatialmath import SE3
 from spatialgeometry import Mesh, Cylinder, Cuboid
 from ir_support_extra_parts import part_path
+
+from collisions import Obstacle
  
 from lynxmotion_ses_pro_model import LynxmotionSESPro, BASE_Z, TOOL_Z
-from motion_planner import MotionPlanner, PlannerSettings
+from lynx_motion import LynxPlanner
 from workcell_layout import STATIONS, Z_COUNTER
 from math import pi
 
@@ -18,6 +20,20 @@ BOARD_T = BOARD_SIZE[2]
 COOKIE_RADIUS = 0.03
 COOKIE_T = 0.010
 COOKIE_COLOUR = (0.72, 0.50, 0.25, 1.0)
+
+# Cookie jar: the Lynxmotion's movable obstacle, the same idea as the JAKA's
+# milk pitcher: ir_support_extra_parts 'CandyJar' scaled to 65%
+# (0.098 x 0.101 x 0.105 m). Full size (0.161 m tall) it is taller than the
+# largest RMRC hop can clear, so the cell could only stop for it, not avoid it.
+# Parked on the bench behind the robot (out of every path); the GUI toggle
+# moves it onto the bench under the cookie's carry arc, which runs from about
+# 170 deg to 94 deg round the base at ~0.1 m above it. 145 deg / 0.50 m is on
+# that arc while still on the bench and 8 cm clear of the cookie board, so the
+# planner must re-plan the carry over it (RMRC sine hop).
+JAR_SCALE = 0.65
+JAR_SIZE = (0.151 * JAR_SCALE, 0.155 * JAR_SCALE, 0.161 * JAR_SCALE)
+JAR_PARKED = (0.45, -pi / 2)      # (r, phi) in the station base frame
+JAR_IN_PATH = (0.50, 145 * pi / 180)
 
 COOKIE_GRID = [(-0.045, -0.08), (-0.045, 0.0), (-0.045, 0.08),
                (0.045, -0.08), (0.045, 0.0), (0.045, 0.08)]
@@ -43,6 +59,7 @@ class LynxStation:
 
         self._build_bench()
         self._build_cookie_tray()
+        self._build_jar()
         self.base_plate, self.parts = robot.link_visuals()
         self._widen_gripper(COOKIE_RADIUS + 0.002)
         robot.pose_visuals(robot.q, self.parts)
@@ -63,6 +80,32 @@ class LynxStation:
             self.cookies.append(cookie)
             self.shapes.append(cookie.shape)
  
+    def _jar_pose(self, r_phi):
+        r, phi = r_phi
+        return self.base * SE3(r * np.cos(phi), r * np.sin(phi), 0)
+
+    def _build_jar(self):
+        """
+        The cookie jar and its collision box. Like every obstacle in the cell
+        it is a Lab 5 RectangularPrism (with a Lab 6 point cloud) the size of
+        the mesh and placed by the jar's SE3.
+        """
+        pose = self._jar_pose(JAR_PARKED)
+        self.jar_mesh = Mesh(str(part_path("CandyJar")), scale=[JAR_SCALE] * 3, pose=pose)
+        self.jar = Obstacle("cookie jar", JAR_SIZE, pose * SE3(0, 0, JAR_SIZE[2] / 2),
+                            movable=True)
+        self.obstacles.append(self.jar)
+        self.shapes.append(self.jar_mesh)
+        self.jar_placed = False
+
+    def toggle_jar(self):
+        """Move the cookie jar into/out of the carry path. Returns the new state."""
+        self.jar_placed = not self.jar_placed
+        pose = self._jar_pose(JAR_IN_PATH if self.jar_placed else JAR_PARKED)
+        self.jar_mesh.T = pose.A
+        self.jar.move_to(pose * SE3(0, 0, JAR_SIZE[2] / 2))
+        return self.jar_placed
+
     def _widen_gripper(self, half_gap):
         for k, (idx, shape, off) in enumerate(self.parts):
             if idx == 5 and isinstance(shape, Cuboid) and abs(off.t[0]) > 1e-6:
@@ -88,9 +131,9 @@ def build_lynx(obstacles=None):
     robot.q = np.zeros(6)
     station = LynxStation(robot)
     
+    # The tool offset is applied by the planner (lynx_motion.TOOL) so the
+    # model's own tool is cleared to avoid applying it twice.
     robot.tool = SE3()
-    settings = PlannerSettings(tool=SE3.Tz(TOOL_Z), roll=0.0, pitch=0.0, tcp_speed=0.10,
-                               manip_epsilon=0.005, via_min_radius=0.25)
-    planner = MotionPlanner(robot, station.obstacles if obstacles is None else obstacles,
-                            MIN_LINK_Z, settings)
+    planner = LynxPlanner(robot, station.obstacles if obstacles is None else obstacles,
+                          MIN_LINK_Z)
     return robot, station, planner

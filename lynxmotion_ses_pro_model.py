@@ -9,7 +9,7 @@ from spatialmath import SE3                         # position and direction GPS
 from spatialgeometry import Cylinder, Cuboid, Mesh  # shapes for modelling
 
 MESH_DIR = os.environ.get("LYNX_MESH_DIR") or os.path.join( # where the parts are located
-    os.path.dirname(os.path.abspath(__file__)), "..", "41013_A2_CAK", "Lynxmotion_Meshes")
+    os.path.dirname(os.path.abspath(__file__)), "Lynxmotion_Meshes")   # next to this file, whatever the repo folder is called
 
 # ============================================================
 # TUNING
@@ -298,4 +298,4 @@ if __name__ == "__main__":
     import sys, runpy
     sys.modules.setdefault("lynxmotion_ses_pro_model", sys.modules[__name__])
     runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                "lynxmotion_ses-pro_movement.py"), run_name="__main__")
+                                "demos_and_debug", "lynxmotion_ses-pro_movement.py"), run_name="__main__")

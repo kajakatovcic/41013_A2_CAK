@@ -1,7 +1,6 @@
 from math import hypot, atan2
 
 import numpy as np
-from scipy.optimize import least_squares
 from spatialmath import SE3
 
 from lynxmotion_ses_pro_model import TOOL_Z
@@ -17,6 +16,12 @@ PLATE_COOKIE_DX = [-0.045, 0.045]
 PLATE_TOP = 0.015    
 HOVER = 0.10         
 
+# Final joint state editor
+# Last move of the sequence - a jtraj from 'ready' to this joint state in 
+# degrees. Can supply a final joint state here. Set to "None" to end the 
+# sequence at 'ready'
+# A goal outside the limits stops the cell with a fault and a goal whose direct
+# path would collide is re-planned through an added waypoint
 FINAL_Q_DEG = None
 
 Q_READY = np.array([135, -35, 75, 0, -40, 0]) * DEG
@@ -28,31 +33,6 @@ IK_SEEDS = [
     np.array([0, -70, 130, 0, -60, 0]) * DEG,    
     np.array([0, -10, 30, 0, -20, 0]) * DEG,     
 ]
-
-def tool_down_ik(robot, T_target):
-    p = T_target.t
-    yaw = float(np.arctan2(T_target.A[1, 0], T_target.A[0, 0]))
-    lo, hi = robot.qlim[0], robot.qlim[1]
-
-    def to_q(x):
-        q6 = (yaw - x[0] + np.pi) % (2 * np.pi) - np.pi
-        return np.array([x[0], x[1], x[2], 0.0, -(x[1] + x[2]), q6])
-
-    def resid(x):
-        return (robot.fkine(to_q(x)) * SE3.Tz(TOOL_Z)).t - p
-
-    closest = np.inf
-    for q3 in (1.2, 0.4, 2.0):                   
-        for q2 in (-0.6, -1.2, 0.0, 0.6):
-            for d1 in (0.0, 0.5, -0.5):
-                sol = least_squares(resid, np.array([yaw + d1, q2, q3]),
-                                    bounds=([-2 * np.pi, -np.pi, -np.pi], [2 * np.pi, np.pi, np.pi]))
-                err = float(np.linalg.norm(sol.fun))
-                q = to_q(sol.x)
-                closest = min(closest, err)
-                if err < 1e-3 and np.all(q >= lo) and np.all(q <= hi):
-                    return q, err
-    return None, closest
 
 class LynxJob:
     def __init__(self, station, tray):
@@ -75,14 +55,6 @@ class LynxJob:
                 r, phi, h = self.targets[base_name]
                 self.targets[name] = (r, phi, h + HOVER)
 
-        self.q_goal = {}
-        for name, (r, phi, h) in self.targets.items():
-            q, err = tool_down_ik(station.robot, self.target_pose(name))
-            self.q_goal[name] = q
-            if q is None:
-                print(f"[Lynx] WARNING {name}: r={r:.3f} m, h={h:.3f} m is NOT reachable tool-down "
-                      f"(closest approach {err * 1000:.0f} mm)")
-
     def _polar(self, p_world):
         p = (self.station.robot.base.inv() * SE3(*p_world)).t
         return float(hypot(p[0], p[1])), float(atan2(p[1], p[0])), float(p[2])
@@ -93,7 +65,7 @@ class LynxJob:
         for k in range(COOKIES_PER_ORDER):
             n = k + 1
             segs += [
-                S("jtraj", f"cookie {n}: move above cookie", goal=self._goal(f"above_cookie_{k}")),
+                S("jtraj", f"cookie {n}: move above cookie", goal=f"above_cookie_{k}"),
                 S("rmrc", f"cookie {n}: lower onto cookie", goal=f"pick_{k}", mode="line"),
                 S("grip", f"cookie {n}: close gripper", close=True, hold=True, cookie=k),
                 S("rmrc", f"cookie {n}: lift cookie", goal=f"above_cookie_{k}", mode="line"),
@@ -117,15 +89,22 @@ class LynxJob:
         return self.targets[name]
 
     def ik_seeds(self, name):
-        if self.q_goal.get(name) is not None:
-            return [self.q_goal[name]]
+        """Q_READY and IK_SEEDS (tool-down configurations) with joint 1 turned
+        to face the target's bearing. The shared planner solves with ikine_LM
+        from these"""
         phi = self.targets[name][1]
         seeds = []
-        for s in IK_SEEDS:
+        for s in [Q_READY] + IK_SEEDS:
             s = s.copy()
             s[0] = phi
             seeds.append(s)
         return seeds
+
+    def report_start(self, name):
+        """Where the --plan comparison starts its IK from. 
+        From all-zero joints ikine_LM lands this arm on an
+        elbow-flipped branch the real sequence never uses."""
+        return self.ik_seeds(name)[0]
 
     def run_action(self, seg, lane):
         if seg.kind == "grip":
@@ -146,10 +125,6 @@ class LynxJob:
         if self.held is not None:
             tcp = lane.robot.fkine(lane.robot.q) * SE3.Tz(TOOL_Z)     
             self.held.set_pose(SE3(*tcp.t))
-
-    def _goal(self, name):
-        q = self.q_goal.get(name)
-        return name if q is None else q    
 
 COMPARE_CASES = [
     ("lower onto cookie", "above_cookie_0", "pick_0", "line", False),
