@@ -28,6 +28,11 @@
 # Inputs can come from the Swift buttons (main thread) or a separate thread,
 # e.g. the PLC listener for the physical e-stop on the real robot,
 # because everything goes through a thread-safe queue.
+#
+# Each e-stop SOURCE is latched separately (the GUI button, the joystick's
+# physical e-stop button, a PLC input...). The cell stays stopped while ANY
+# source is still pressed and releasing one source cannot clear another.
+# Releasing the GUI e-stop does not cancel a physical e-stop that is still held.
 
 import queue
 
@@ -99,7 +104,7 @@ class SafetyController:
     def __init__(self, beacon=None, curtain_field=None, label=None, log=print):
         self.state = IDLE
         self.message = "Press START to begin."
-        self.estop_pressed = False
+        self.estop_sources = set() # e-stop inputs currently pressed (latched)
         self.curtain_broken = False
         self.resumed = False # set on START after a stop; read by the sequencer
         self._events = queue.Queue()
@@ -113,8 +118,8 @@ class SafetyController:
     def press_estop(self, source="GUI"):
         self._events.put(("estop", source))
 
-    def release_estop(self):
-        self._events.put(("release", None))
+    def release_estop(self, source="GUI"):
+        self._events.put(("release", source))
 
     def reset(self):
         self._events.put(("reset", None))
@@ -137,7 +142,7 @@ class SafetyController:
                     self._note("Light curtain broken.")
             else:
                 self._note("Light curtain clear.")
-
+    
     def fault(self, message):
         """Raised by the planner/sequencer e.g. an unavoidable collision is detected"""
         if self.state != ESTOP:
@@ -152,8 +157,18 @@ class SafetyController:
         self._note(message)
 
     @property
+    def estop_pressed(self):
+        return bool(self.estop_sources)
+
+    @property
     def motion_allowed(self):
+        """Automatic (task sequence) motion is allowed."""
         return self.state == RUNNING
+
+    @property
+    def jog_allowed(self):
+        """Manual (teach/jog) motion is allowed. Never while stopped or faulted."""
+        return self.state not in (ESTOP, FAULT, PROTECTIVE_STOP)
 
     # Per frame tick() called from the main loop. THis is where the queued events are 
     # processed and the state machine is implemented. The main loop is paced by 
@@ -168,17 +183,21 @@ class SafetyController:
 
     def _handle(self, kind, arg):
         if kind == "estop":
-            self.estop_pressed = True
+            self.estop_sources.add(arg)
             self._go(ESTOP, f"E-STOP pressed ({arg}). Release it, then RESET, then START.")
         elif kind == "release":
-            if self.estop_pressed:
-                self.estop_pressed = False
-                self._note("E-stop released. Still stopped: press RESET to acknowledge.")
+            if arg in self.estop_sources:
+                self.estop_sources.discard(arg)
+                if self.estop_sources:
+                    self._note(f"{arg} e-stop released, but still pressed: "
+                               f"{', '.join(sorted(self.estop_sources))}.")
+                else:
+                    self._note(f"{arg} e-stop released. Still stopped: press RESET to acknowledge.")
         elif kind == "reset":
             if self.state not in (ESTOP, FAULT, PROTECTIVE_STOP):
                 self._note(f"RESET ignored in state {self.state}.")
             elif self.estop_pressed:
-                self._note("Cannot RESET: e-stop is still pressed.")
+                self._note(f"Cannot RESET: e-stop still pressed ({', '.join(sorted(self.estop_sources))}).")
             elif self.curtain_broken:
                 self._note("Cannot RESET: light curtain is still blocked.")
             else:

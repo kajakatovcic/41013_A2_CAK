@@ -27,6 +27,13 @@ Swift panel: the shared safety panel (cell_runner.py), plus a movable
 obstacle for each robot that has one (JAKA milk pitcher, Lynxmotion cookie jar)
 to deliberately block a planned path.
 
+TEACH/JOG (teach_pendant.py) below the safety controls:
+    'AUTO/MANUAL' button toggles the mode. In MANUAL the task sequence and
+    conveyor pause and the selected robot is jogged with the joint sliders, or
+    in X/Y/Z with a joystick (left stick = X/Y, Triangle = Z up, Circle = Z
+    down). The joystick rumbles at joint limits.
+    Joystick CROSS (X) button = PHYSICAL E-STOP, active in every mode.
+
 Each station also runs on its own from demos_and_debug/(coffee_demo.py,
 tm5_demo.py, lynx_demo.py).
 
@@ -53,6 +60,7 @@ from workcell_scene import Workcell
 from workcell_layout import TRAY_ENTRY_X, COLLECTION_X
 import cell_runner
 import plan_report
+from teach_pendant import TeachPendant
 
 
 def build_scene(safety):
@@ -119,6 +127,7 @@ def main():
     env = cell_runner.launch(cell, parts, ([0.0, 4.2, 3.6], [-0.9, -0.6, 0.8]))
     safety, state_label, task_label = cell_runner.make_safety(cell)
     sequencer.safety = safety
+    pendant = TeachPendant(sequencer, safety) # GUI jog, joystick and physical e-stop
     cell_runner.add_controls(env, safety, cell, state_label, task_label, [
         cell_runner.obstacle_button("Milk pitcher in JAKA path (toggle)",
                                     stations["JAKA"].toggle_pitcher, sequencer, safety,
@@ -126,8 +135,9 @@ def main():
         cell_runner.obstacle_button("Cookie jar in Lynxmotion path (toggle)",
                                     stations["Lynxmotion"].toggle_jar, sequencer, safety,
                                     "Cookie jar"),
-    ])
-    cell_runner.run(env, safety, cell, cell_runner.make_curtain(), sequencer, task_label)
+    ], pendant=pendant)
+    cell_runner.run(env, safety, cell, cell_runner.make_curtain(), sequencer, task_label,
+                    pendant=pendant)
 
 
 if __name__ == "__main__":

@@ -32,6 +32,7 @@ from workcell_scene import Workcell
 from workcell_layout import TRAY_ENTRY_X
 import cell_runner
 import plan_report
+from teach_pendant import TeachPendant
 
 # The moves compared in the --plan report: (label, start, goal, RMRC mode, holding)
 COMPARE_CASES = [
@@ -63,8 +64,10 @@ def main():
     safety, state_label, task_label = cell_runner.make_safety(cell)
     # The TM5's final joint state comes from FINAL_Q_DEG in tm5_task.py.
     task = TM5Task(robot, planner, station, cell.conveyor.tray, safety)
-    cell_runner.add_controls(env, safety, cell, state_label, task_label)
-    cell_runner.run(env, safety, cell, cell_runner.make_curtain(), task, task_label)
+    pendant = TeachPendant(task, safety) # GUI jog, joystick and physical e-stop
+    cell_runner.add_controls(env, safety, cell, state_label, task_label, pendant=pendant)
+    cell_runner.run(env, safety, cell, cell_runner.make_curtain(), task, task_label,
+                    pendant=pendant)
 
 
 if __name__ == "__main__":

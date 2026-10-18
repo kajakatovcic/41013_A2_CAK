@@ -35,6 +35,7 @@ from safety_controller import SafetyController
 from workcell_scene import Workcell
 import cell_runner
 import plan_report
+from teach_pendant import TeachPendant
 
 
 def build():
@@ -82,11 +83,13 @@ def main():
     safety, state_label, task_label = cell_runner.make_safety(cell)
     # The JAKA's final joint state comes from FINAL_Q_DEG in coffee_task.py.
     task = CoffeeTask(robot, planner, station, cell.conveyor.tray, safety)
+    pendant = TeachPendant(task, safety) # GUI jog, joystick and physical e-stop
     cell_runner.add_controls(env, safety, cell, state_label, task_label,
                              [cell_runner.obstacle_button("Milk pitcher in path (toggle)",
                                                           station.toggle_pitcher, task, safety,
-                                                          "Milk pitcher")])
-    cell_runner.run(env, safety, cell, curtain, task, task_label)
+                                                          "Milk pitcher")],
+                             pendant=pendant)
+    cell_runner.run(env, safety, cell, curtain, task, task_label, pendant=pendant)
 
 
 if __name__ == "__main__":

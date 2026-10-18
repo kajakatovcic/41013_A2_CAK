@@ -34,6 +34,7 @@ from workcell_scene import Workcell
 from workcell_layout import TRAY_ENTRY_X
 import cell_runner
 import plan_report
+from teach_pendant import TeachPendant
 
 
 def main():
@@ -55,11 +56,14 @@ def main():
     env = cell_runner.launch(cell, [station], ([-0.5, 2.6, 2.3], [-1.7, -0.5, 0.9]))
     safety, state_label, task_label = cell_runner.make_safety(cell)
     task = LynxTask(robot, planner, station, cell.conveyor.tray, safety)
+    pendant = TeachPendant(task, safety) # GUI jog, joystick and physical e-stop
     cell_runner.add_controls(env, safety, cell, state_label, task_label,
                              [cell_runner.obstacle_button("Cookie jar in path (toggle)",
                                                           station.toggle_jar, task, safety,
-                                                          "Cookie jar")])
-    cell_runner.run(env, safety, cell, cell_runner.make_curtain(), task, task_label)
+                                                          "Cookie jar")],
+                             pendant=pendant)
+    cell_runner.run(env, safety, cell, cell_runner.make_curtain(), task, task_label,
+                    pendant=pendant)
 
 
 if __name__ == "__main__":

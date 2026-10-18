@@ -61,8 +61,10 @@ def obstacle_button(desc, toggle, sequencer, safety, what):
     return desc, cb
 
 
-def add_controls(env, safety, cell, state_label, task_label, extra_buttons=()):
-    """The safety panel. extra_buttons: (description, callback) pairs."""
+def add_controls(env, safety, cell, state_label, task_label, extra_buttons=(), pendant=None):
+    """The safety panel. extra_buttons: (description, callback) pairs.
+    pendant: optional teach_pendant.TeachPendant whose TEACH/JOG section is
+    added below the safety controls."""
     import swift
 
     def toggle_hand(_=None):
@@ -78,12 +80,19 @@ def add_controls(env, safety, cell, state_label, task_label, extra_buttons=()):
     env.add(swift.Button(cb=toggle_hand, desc="Hand into light curtain (toggle)"))
     for desc, cb in extra_buttons:
         env.add(swift.Button(cb=lambda _=None, cb=cb: cb(), desc=desc))
+    if pendant is not None:
+        pendant.add_to_panel(env)
 
 
-def run(env, safety, cell, curtain, sequencer, task_label):
+def run(env, safety, cell, curtain, sequencer, task_label, pendant=None):
     """
     Main running loop - One iteration per frame as env.step(DT) paces the loop
     (it sleeps), so nothing here spins the processor while the cell is stopped.
+
+    With a teach pendant each frame: Read the joystick (the physical e-stop is
+    queued BEFORE the safety controller ticks so it acts in the same frame),
+    tick the safety controller, do one frame of manual jogging, and run the
+    task sequence only in AUTO mode.
     """
     sequencer.update_visuals()
     env.step(0)
@@ -91,10 +100,15 @@ def run(env, safety, cell, curtain, sequencer, task_label):
     last_status = None
     try:
         while True:
+            if pendant is not None:
+                pendant.read_inputs()
             safety.tick()
             hand = [cell.hand_obstacle] if cell.hand_inside else []
             safety.update_curtain(curtain.is_broken(hand))
-            sequencer.tick()
+            if pendant is not None:
+                pendant.step()
+            if pendant is None or pendant.auto_active:
+                sequencer.tick()
             sequencer.update_visuals()
             if sequencer.status != last_status:
                 last_status = sequencer.status

@@ -133,6 +133,19 @@ class TaskSequencer:
         self.world_version += 1
 
     # Per-frame execution
+    def replan_current(self):
+        """
+        Throw away the plan of every move in progress so it is re-planned from
+        the robot's (or tray's) actual state on the next frame. Used after a
+        stop (the arm halted part-way) and after manual jogging (the operator
+        moved the arm) so automatic motion never jumps back onto an old plan.
+        """
+        for lane in self.lanes:
+            seg = lane.current
+            if seg is not None and seg.plan is not None and \
+                    (seg.kind in ROBOT_MOTIONS or seg.kind == "convey"):
+                seg.plan, seg.i = None, 0
+
     def tick(self):
         """Advance every lane by one frame if the safety state allows motion"""
         if not self.safety.motion_allowed:
@@ -140,11 +153,7 @@ class TaskSequencer:
 
         if self.safety.resumed:
             self.safety.resumed = False
-            for lane in self.lanes:
-                seg = lane.current
-                if seg is not None and seg.plan is not None and \
-                        (seg.kind in ROBOT_MOTIONS or seg.kind == "convey"):
-                    seg.plan, seg.i = None, 0 # re-plan from where it halted
+            self.replan_current()
 
         if self.world_version != self._seen_version:
             self._seen_version = self.world_version
