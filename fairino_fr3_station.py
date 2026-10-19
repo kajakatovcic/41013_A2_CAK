@@ -187,7 +187,7 @@ R_CLEAR_PICK = 0.24
 
 PHI_PICK = 0
 
-R_TRAY = 0.550
+R_TRAY = 0.540
 PHI_TRAY = np.deg2rad(90)
 
 H_PICK = (ColdDrink.HEIGHT / 2 + FR3Gripper.FINGER[2] / 2)

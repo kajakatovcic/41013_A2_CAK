@@ -60,7 +60,7 @@ class FairinoFR3(UTSMeshRobot):
         ]
 
         current_path = os.path.abspath(os.path.dirname(__file__))
-        mesh_path = os.path.join(current_path, "FAIRINO_Meshes")
+        mesh_path = os.path.join(current_path, "FAIRINO FR3_Meshes")
 
         super().__init__(
             links=links,
