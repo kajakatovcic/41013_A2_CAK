@@ -176,8 +176,7 @@ class PlateStation:
         self.tool.add_to_env(env)
 
 
-# Link frames must stay 5cm above the counter (the TM5's wrist is larger
-# than the JAKA's).
+# Link frames must stay 5cm above the counter
 MIN_LINK_Z = Z_COUNTER + 0.05
 
 
