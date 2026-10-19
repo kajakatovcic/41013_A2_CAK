@@ -51,25 +51,11 @@ class FR3Job:
         # ---------------------------------------------------------
         # Conveyor stop position
         # ---------------------------------------------------------
-        # Stop the tray so its DRINK_SLOT is aligned with the FR3
-        # "place" target.
-        r, phi, _ = POSES["place"]
+        # Stop the tray so its drink slot is aligned in X with the
+        # FR3 base. This keeps the requested drink position on the
+        # tray but makes it easier for the FR3 to reach.
 
-        place_world = (
-            station.base
-            * SE3(
-                r * np.cos(phi),
-                r * np.sin(phi),
-                0
-            )
-        )
-
-        slot_x = place_world.t[0]
-
-        self.tray_stop_x = (
-            slot_x
-            - Tray.DRINK_SLOT.t[0]
-        )
+        self.tray_stop_x = (self.station.base.t[0] - Tray.DRINK_SLOT.t[0])
 
     # -------------------------------------------------------------------------
     # Motion / action sequence

@@ -10,55 +10,16 @@ FAIRINO FR3 cold-drink station in the shared workcell.
 
 import argparse
 import numpy as np
-from spatialmath import SE3
-
-from fairino_fr3 import FairinoFR3
-from fairino_fr3_motion import FR3Planner
-from fairino_fr3_station import FR3Station
 from fairino_fr3_task import FR3Task
 
 from safety_controller import SafetyController
 from workcell_scene import Workcell
-from workcell_layout import (
-    STATIONS,
-    Z_COUNTER,
-    TRAY_ENTRY_X
-)
+
+from fairino_fr3_station import build_fr3
+from workcell_layout import TRAY_ENTRY_X
 
 import cell_runner
 import plan_report
-
-
-# -----------------------------------------------------------------------------#
-# Planner clearance
-# -----------------------------------------------------------------------------#
-
-# Start with the same general clearance used by the smaller cobots.
-MIN_LINK_Z = Z_COUNTER + 0.03
-
-
-# -----------------------------------------------------------------------------#
-# Build FAIRINO FR3 station
-# -----------------------------------------------------------------------------#
-
-def build_fr3(obstacles=None):
-
-    # Temporary validated position for the standalone FR3 demo.
-    station_base = STATIONS["FAIRINO_FR3"][0]
-
-    robot_base = station_base * SE3(0, 0.15, 0)
-    robot = FairinoFR3(base=robot_base)
-
-    station = FR3Station(station_base, robot_base)
-
-    planner = FR3Planner(
-        robot,
-        station.obstacles if obstacles is None else obstacles,
-        MIN_LINK_Z
-    )
-
-    return robot, station, planner
-
 
 # -----------------------------------------------------------------------------#
 # Main
@@ -154,7 +115,16 @@ def main():
         safety,
         cell,
         state_label,
-        task_label
+        task_label,
+        [
+            cell_runner.obstacle_button(
+                "Blue crate in FR3 path (toggle)",
+                station.toggle_obstacle_crate,
+                task,
+                safety,
+                "Blue crate"
+            )
+        ]
     )
 
     cell_runner.run(

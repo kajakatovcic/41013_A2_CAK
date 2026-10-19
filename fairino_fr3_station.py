@@ -4,7 +4,16 @@ from spatialmath import SE3
 from spatialgeometry import Cuboid, Cylinder, Mesh
 from ir_support_extra_parts import part_path
 
+from collisions import Obstacle
+
 from math import pi
+
+from fairino_fr3 import FairinoFR3
+
+from workcell_layout import (
+    STATIONS,
+    Z_COUNTER
+)
 
 
 # -----------------------------------------------------------------------------#
@@ -75,7 +84,6 @@ class FR3Gripper:
         for finger in self.fingers:
             env.add(finger)
 
-
 # -----------------------------------------------------------------------------#
 # Cold drink
 # -----------------------------------------------------------------------------#
@@ -111,15 +119,67 @@ class ColdDrink:
         env.add(self.shape)
 
 # -----------------------------------------------------------------------------#
+# Deliberate movable obstacle crate
+# -----------------------------------------------------------------------------#
+
+OBSTACLE_CRATE_SIZE = (
+    0.12,   # X width
+    0.10,   # Y depth
+    0.19    # Z height
+)
+
+OBSTACLE_CRATE_COLOUR = (0.15, 0.35, 0.85, 1.0)
+
+# Positions are relative to the FR3 robot base.
+# Parked position:
+# safely behind / to the staff side of the robot and outside the
+# normal pick-to-tray motion.
+OBSTACLE_CRATE_PARKED = (
+    0.35,                   # r
+    np.deg2rad(-90)         # phi
+)
+
+# In-path position:
+# approximately midway around the FR3's carry arc between:
+#   pickup  = 0 deg
+#   tray    = 90 deg
+#
+# This is an initial value and may need small tuning after we see
+# the actual collision/replanning behaviour.
+OBSTACLE_CRATE_IN_PATH = (
+    0.34,                   # r
+    np.deg2rad(25)          # phi
+)
+
+class ObstacleCrate:
+    """
+    Visual movable obstacle used to demonstrate FR3 collision
+    prediction and replanning.
+    """
+
+    def __init__(self, pose):
+
+        self.shape = Cuboid(
+            scale=list(OBSTACLE_CRATE_SIZE),
+            color=OBSTACLE_CRATE_COLOUR
+        )
+
+        self.set_pose(pose)
+
+    def set_pose(self, pose):
+
+        self.pose = pose
+        self.shape.T = pose.A
+
+# -----------------------------------------------------------------------------#
 # FR3 task target positions
 # Stored as (r, phi, h) relative to the FR3 base frame
 # -----------------------------------------------------------------------------#
 
 # Physical centre of the can on the bench
-R_CAN = 0.28
+#R_CAN = 0.28
 
-# TCP stops 20 mm before the can centre so the can
-# sits toward the front of the fingers rather than at their midpoint.
+# Radial position of the red drink pickup
 R_PICK = 0.28
 
 # Safe approach point, 40 mm before the grasp TCP
@@ -127,8 +187,8 @@ R_CLEAR_PICK = 0.24
 
 PHI_PICK = 0
 
-R_TRAY = 0.340
-PHI_TRAY = np.deg2rad(105)
+R_TRAY = 0.550
+PHI_TRAY = np.deg2rad(90)
 
 H_PICK = (ColdDrink.HEIGHT / 2 + FR3Gripper.FINGER[2] / 2)
 H_ABOVE_PICK = H_PICK + 0.16
@@ -199,6 +259,7 @@ class FR3Station:
 
         # Bench stays fixed relative to the workstation
         self._build_bench()
+        self._build_obstacle_crate()
 
         self.gripper = FR3Gripper()
 
@@ -217,6 +278,19 @@ class FR3Station:
 
         self.drink = ColdDrink(drink_pose)
 
+    def _obstacle_crate_pose(self, r_phi):
+
+        r, phi = r_phi
+
+        return (
+            self.robot_base
+            * SE3(
+                r * np.cos(phi),
+                r * np.sin(phi),
+                OBSTACLE_CRATE_SIZE[2] / 2
+            )
+        )
+    
     def _build_bench(self):
 
         bx = self.station_base.t[0]
@@ -237,6 +311,54 @@ class FR3Station:
         )
 
         self.shapes.append(self.bench)
+
+    def _build_obstacle_crate(self):
+
+        # Start safely parked.
+        pose = self._obstacle_crate_pose(
+            OBSTACLE_CRATE_PARKED
+        )
+
+        # Visible blue crate.
+        self.obstacle_crate_visual = ObstacleCrate(pose)
+
+        # Matching collision body.
+        self.obstacle_crate = Obstacle(
+            "FR3 supply crate",
+            list(OBSTACLE_CRATE_SIZE),
+            pose,
+            movable=True
+        )
+
+        self.obstacles.append(self.obstacle_crate)
+        self.shapes.append(self.obstacle_crate_visual.shape)
+
+        self.obstacle_crate_placed = False
+
+    def toggle_obstacle_crate(self):
+        """
+        Move the blue crate into or out of the FR3 carry path.
+
+        Returns True when the obstacle is now in the path.
+        """
+
+        self.obstacle_crate_placed = not self.obstacle_crate_placed
+
+        target = (
+            OBSTACLE_CRATE_IN_PATH
+            if self.obstacle_crate_placed
+            else OBSTACLE_CRATE_PARKED
+        )
+
+        pose = self._obstacle_crate_pose(target)
+
+        # Move visible crate.
+        self.obstacle_crate_visual.set_pose(pose)
+
+        # Move collision body.
+        self.obstacle_crate.move_to(pose)
+
+        return self.obstacle_crate_placed
 
     def add_to_env(self, env):
 
@@ -269,3 +391,38 @@ class FR3Station:
             seeds.append(TRAY_IK_SEED.copy())
 
         return seeds
+
+# -----------------------------------------------------------------------------
+# Build FAIRINO FR3 station
+# -----------------------------------------------------------------------------
+
+MIN_LINK_Z = Z_COUNTER + 0.03
+
+
+def build_fr3(obstacles=None):
+    """
+    Build the FAIRINO FR3, its station and its planner.
+
+    Used by both the standalone FR3 demo and the integrated main scene.
+    """
+    from fairino_fr3_motion import FR3Planner
+    
+    station_base = STATIONS["FAIRINO_FR3"][0]
+
+    # Validated physical offset between workstation and robot base.
+    robot_base = station_base * SE3(0, 0.15, 0)
+
+    robot = FairinoFR3(base=robot_base)
+
+    station = FR3Station(
+        station_base,
+        robot_base
+    )
+
+    planner = FR3Planner(
+        robot,
+        station.obstacles if obstacles is None else obstacles,
+        MIN_LINK_Z
+    )
+
+    return robot, station, planner
