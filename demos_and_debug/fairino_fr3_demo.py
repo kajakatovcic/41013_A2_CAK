@@ -8,6 +8,11 @@ FAIRINO FR3 cold-drink station in the shared workcell.
         No Swift - plan every move and print the sequence
 """
 
+import os
+import sys
+
+sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import argparse
 import numpy as np
 from fairino_fr3_task import FR3Task
