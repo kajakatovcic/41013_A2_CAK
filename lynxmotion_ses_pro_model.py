@@ -5,6 +5,8 @@ import trimesh                                      # 3D model reader
 from trimesh.nsphere import minimum_nsphere         # find the smallest circle which fits around a bunch of points
 from scipy.spatial import ConvexHull                # 'rubber band' around the points of the circle
 from roboticstoolbox import Link, ET, ERobot        # link 'bone', how the bone moves, and the whole 'skeleton'
+import roboticstoolbox as rtb                       # DH links
+from ir_support.robots.UTSMeshRobot import UTSMeshRobot   # the course's required robot base class
 from spatialmath import SE3                         # position and direction GPS
 from spatialgeometry import Cylinder, Cuboid, Mesh  # shapes for modelling
 
@@ -224,7 +226,8 @@ TOOL_Z = -(LEN_L1 / 2 + 0.085)               # gripper hangs below J6
 # ============================================================
 # THE ROBOT
 # ============================================================
-class LynxmotionSESPro(ERobot):
+class LynxmotionSESProET(ERobot):
+    """OLD joint-chain model. Reference only, used by check_dh_conversion.py. Delete once the check passes."""
 
     def __init__(self, mount=None):
         self.mount = SE3() if mount is None else mount
@@ -293,6 +296,77 @@ class LynxmotionSESPro(ERobot):
         for link_idk, shape, offset in parts:
             frame = self.base if link_idk < 0 else link_frames[link_idk + 1]
             shape.T = (frame * offset).A
+
+# ============================================================
+# THE ROBOT (DH, UTSMeshRobot): the one the cell uses
+# ============================================================
+_H = np.pi / 2
+
+def _dh_links():
+    """Standard DH (Rz(q+offset) Tz(d) Tx(a) Rx(alpha)). Gives exactly the same end-effector
+    pose as the old joint-chain model (checked by check_dh_conversion.py)."""
+    return [
+        rtb.RevoluteDH(d=D1,          a=0,       alpha=-_H, offset=0,   qlim=QLIMS[0]),
+        rtb.RevoluteDH(d=Y_UP,        a=L_UPPER, alpha=0,   offset=-_H, qlim=QLIMS[1]),
+        rtb.RevoluteDH(d=Y_FORE,      a=0,       alpha=_H,  offset=_H,  qlim=QLIMS[2]),
+        rtb.RevoluteDH(d=L_J5,        a=0,       alpha=-_H, offset=0,   qlim=QLIMS[3]),
+        rtb.RevoluteDH(d=J6_OFFSET_Y, a=0,       alpha=_H,  offset=0,   qlim=QLIMS[4]),
+        rtb.RevoluteDH(d=0,           a=0,       alpha=0,   offset=0,   qlim=QLIMS[5]),
+    ]
+
+
+class LynxmotionSESPro(rtb.DHRobot):
+
+    def __init__(self, mount=None):
+        self.mount = SE3() if mount is None else mount
+        base = self.mount * SE3.Tz(BASE_Z)
+        super().__init__(_dh_links(), name="LynxmotionSESPro", base=base)
+        self.base = base
+        deg = np.pi / 180
+        # qr matches the product photo: upper arm back, forearm forward, wrist pitched back
+        self.qr = np.array([0, -35 * deg, 75 * deg, 0, -40 * deg, 0])
+        self.qz = np.zeros(6)
+        self.addconfiguration("qr", self.qr)
+        self.addconfiguration("qz", self.qz)
+
+    # The DH link frames sit differently from the old joint-chain frames the meshes were placed in.
+    # Each link needs one fixed correction C so every mesh lands exactly where it did before.
+    def _corrections(self):
+        R2 = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]], float)
+        return [
+            SE3.Rx(_H) * SE3.Tz(-D1),                 # link 1 waist
+            SE3.Rt(R2, [-L_UPPER, 0, -Y_UP]),         # link 2 shoulder
+            SE3(0, -Y_FORE, 0),                       # link 3 elbow
+            SE3.Rx(_H) * SE3.Tz(-L_J5),               # link 4 wrist roll
+            SE3(0, -J6_OFFSET_Y, 0),                  # link 5 wrist pitch
+            SE3(),                                    # link 6 wrist yaw (and the gripper)
+        ]
+
+    def link_visuals(self):
+        base_plate, parts = LynxmotionSESProET.link_visuals(self)   # same meshes and offsets as before
+        C = self._corrections()
+        parts = [(i, shape, off if i < 0 else C[i] * off) for i, shape, off in parts]
+        return base_plate, parts
+
+    def _frames(self, q):
+        """World pose of the base then each link frame (DH frames)."""
+        T = self.base
+        frames = [T]
+        for link, qi in zip(self.links, q):
+            T = T * link.A(qi)
+            frames.append(T)
+        return frames
+
+    def tcp(self, q):
+        return self.fkine(np.clip(q, self.qlim[0], self.qlim[1])) * SE3.Tz(TOOL_Z)
+
+    def pose_visuals(self, q, parts):
+        q = np.clip(q, self.qlim[0], self.qlim[1])
+        frames = self._frames(q)
+        for link_idk, shape, offset in parts:
+            frame = self.base if link_idk < 0 else frames[link_idk + 1]
+            shape.T = (frame * offset).A
+
 
 if __name__ == "__main__":
     import sys, runpy

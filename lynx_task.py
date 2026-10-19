@@ -12,7 +12,7 @@ from lynx_station import COOKIE_T
 DEG = np.pi / 180
 
 COOKIES_PER_ORDER = 1
-PLATE_COOKIE_DX = [-0.045, 0.045]
+PLATE_COOKIE_DX = [0]
 PLATE_TOP = 0.015    
 HOVER = 0.10         
 
