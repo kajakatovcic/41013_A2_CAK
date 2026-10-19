@@ -8,12 +8,13 @@ FINAL JOINT STATES: each robot's final pose is set by FINAL_Q_DEG at the top
 of its job file (degrees). Change them there:
     TM5-700            -> tm5_task.py
     Lynxmotion SES-PRO -> lynx_task.py
+    Fairino FR3        -> fairino_fr3_task.py
     JAKA MiniCobo      -> coffee_task.py
 
 Order flow along the conveyor (one tray):
     1. TM5-700  places a plate (tray stops at the TM5)
     2. Lynxmotion SES-PRO places a cookie on the plate (tray stops at the Lynxmotion)
-    3. FAIRINO FR3 places a drink @TODO when integrated
+    3. FAIRINO FR3 places a cold drink - soda can (tray stops at the Fairino FR3)
     4. JAKA MiniCobo brews and places the coffee (tray stops at the JAKA)
     5. The tray moves out through the light curtain to the collection zone
 
@@ -54,6 +55,8 @@ from tm5_station import build_tm5
 from tm5_task import PlateJob
 from lynx_station import build_lynx
 from lynx_task import LynxJob
+from fairino_fr3_station import build_fr3
+from fairino_fr3_task import FR3Job
 from task_sequencer import Segment, RobotLane, ConveyorLane, TaskSequencer
 from safety_controller import SafetyController
 from workcell_scene import Workcell
@@ -72,12 +75,15 @@ def build_scene(safety):
     tm5, tm5_station, tm5_planner = build_tm5()
     lynx, lynx_station, lynx_planner = build_lynx()
     jaka, jaka_station, jaka_planner = build_jaka()
+    fr3, fr3_station, fr3_planner = build_fr3()
     tm5.q = np.zeros(6)
     lynx.q = np.zeros(6)
+    fr3.q = np.array(fr3.home_q, dtype=float)
     jaka.q = np.zeros(6)
 
     plate_job = PlateJob(tm5_station, tray)
     lynx_job = LynxJob(lynx_station, tray)
+    fr3_job = FR3Job(fr3_station, tray)
     coffee_job = CoffeeJob(jaka_station, tray)
 
     S = Segment
@@ -85,10 +91,10 @@ def build_scene(safety):
         S("convey", "tray -> TM5 station", x=plate_job.tray_stop_x, sets="tray_at_tm5"),
         S("convey", "tray -> Lynxmotion station", x=lynx_job.tray_stop_x,
           requires="plate_placed", sets="tray_at_lynx"),
-        # @TODO: the FR3 stop goes here (requires="food_placed",
-        # sets="tray_at_fr3"). Then change the JAKA stop to requires="drink_placed".
+        S("convey", "tray -> FAIRINO FR3 station", x=fr3_job.tray_stop_x,
+          requires="food_placed", sets="tray_at_fr3"),
         S("convey", "tray -> JAKA station", x=coffee_job.tray_stop_x,
-          requires="food_placed", sets="tray_at_jaka"),
+          requires="drink_placed", sets="tray_at_jaka"),
         S("convey", "tray -> collection zone", x=COLLECTION_X,
           requires="coffee_placed", sets="delivered"),
     ]
@@ -98,14 +104,15 @@ def build_scene(safety):
     lanes = [
         RobotLane("TM5", tm5, tm5_planner, plate_job, plate_job.segments()),
         RobotLane("Lynxmotion", lynx, lynx_planner, lynx_job, lynx_job.segments()),
+        RobotLane("FAIRINO FR3", fr3, fr3_planner, fr3_job, fr3_job.segments()),
         RobotLane("JAKA", jaka, jaka_planner, coffee_job, coffee_job.segments()),
         ConveyorLane("conveyor", tray, conveyor),
     ]
     sequencer = TaskSequencer(safety, lanes)
     # The Lynxmotion has no add_to_env of its own. Its station draws and moves
     # its link meshes, so only the station is added to Swift.
-    parts = [tm5_station, tm5, lynx_station, jaka_station, jaka]
-    stations = {"TM5": tm5_station, "Lynxmotion": lynx_station, "JAKA": jaka_station}
+    parts = [tm5_station, tm5, lynx_station, fr3_station, fr3, jaka_station, jaka]
+    stations = {"TM5": tm5_station, "Lynxmotion": lynx_station, "FAIRINO_FR3": fr3_station, "JAKA": jaka_station}
     return cell, sequencer, parts, stations
 
 
@@ -135,6 +142,10 @@ def main():
         cell_runner.obstacle_button("Cookie jar in Lynxmotion path (toggle)",
                                     stations["Lynxmotion"].toggle_jar, sequencer, safety,
                                     "Cookie jar"),
+        cell_runner.obstacle_button("Blue crate in FR3 path (toggle)",
+                                stations["FAIRINO_FR3"].toggle_obstacle_crate,
+                                sequencer, safety,
+                                "Blue crate"),       
     ], pendant=pendant)
     cell_runner.run(env, safety, cell, cell_runner.make_curtain(), sequencer, task_label,
                     pendant=pendant)
