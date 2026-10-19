@@ -65,11 +65,14 @@ JAKA_Y = -0.62 # 0.58 m from the tray's coffee slot
 TM5_X = -3.40
 TM5_Y = -0.55 # 0.55 m from the tray's plate slot
 
+FR3_X = -0.05
+FR3_Y = -0.62
+
 STATIONS = {
     # name:        (base pose in world,                       task)
     "TM5700":      (SE3(TM5_X, TM5_Y, Z_COUNTER),             "places a plate on the tray"),
     "Lynxmotion":  (SE3(-1.70, -0.62, Z_COUNTER),             "serves food onto the plate"),
-    "FAIRINO_FR3": (SE3(-0.05, -0.75, Z_COUNTER),             "places a cold drink on the tray"),
+    "FAIRINO_FR3": (SE3(FR3_X, FR3_Y, Z_COUNTER),             "places a cold drink on the tray"),
     "JAKA":        (SE3(JAKA_X, JAKA_Y, Z_COUNTER),           "brews and places the coffee"),
 }
 
