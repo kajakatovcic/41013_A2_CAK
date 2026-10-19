@@ -54,7 +54,6 @@ COLLECTION_ZONE_SIZE = (1.30, 1.40) # floor marking
 
 # Robot stations: base frame of each robot in the world frame.
 # Robots sit on the -Y (staff) side of the belt, facing the belt.
-# @TODO: integrate the FAIRINO FR3 at its reserved station
 JAKA_X = 1.60
 JAKA_Y = -0.62 # 0.58 m from the tray's coffee slot
 
