@@ -18,13 +18,15 @@ All positions live in `workcell_layout.py` (one world frame). Mount your robot a
 
 Each robot has a station demo that runs on its own and `main_scene.py` runs every integrated robot together. All of them share one planner, one sequencer, one safety controller and one Swift panel.
 
+The integrated Swift panel also provides controlled movable obstacles for collision-avoidance demonstrations, including the JAKA milk pitcher, Lynxmotion cookie jar and FAIRINO FR3 blue crate (drink can storage). Moving an obstacle into a planned path causes the affected robot to check and, where possible, re-plan a collision-free trajectory.
+
 | File | Contents |
 | --- | --- |
 | `workcell_layout.py` | World frame, conveyor, enclosure, station base poses, safety equipment positions |
 | `workcell_scene.py` | Enclosure, conveyor and tray, collection zone, safety equipment (with the risk register), reserved robot footprints |
 | `safety_controller.py` | E-stop / light curtain / fault state machine: latched stop, separate RESET and START. Light curtain modelled as beams (Lab 6 ray casting) |
 | `collisions.py` | Lab 5 line-plane test on link, tool and payload centre-lines + Lab 6 ellipsoids for the tool and payload, against named + rotatable `RectangularPrism` obstacles |
-| `motion_planner.py` | **Shared by every robot**: jtraj for free-space moves and RMRC for constrained Cartesian moves, IK, collision checks, active avoidance. Details chaning per robot go in a `PlannerSettings` |
+| `motion_planner.py` | **Shared by every robot**: jtraj for free-space moves and RMRC for constrained Cartesian moves, IK, collision checks, active avoidance. Details changing per robot go in a `PlannerSettings` |
 | `task_sequencer.py` | **Shared**: runs every robot and the conveyor frame by frame as 'lanes' synchronised by flags. Re-plans after a stop or when an obstacle moves |
 | `cell_runner.py` | **Shared**: Swift set-up, safety panel and real-time loop |
 | `teach_pendant.py` | **Shared**: teach/jog GUI (AUTO / MANUAL, joint sliders, Cartesian X/Y/Z jog), pygame joystick jogging with rumble at joint limits, joystick Cross (X) button = physical e-stop |
@@ -38,8 +40,13 @@ Each robot has a station demo that runs on its own and `main_scene.py` runs ever
 | `lynx_motion.py` | Lynxmotion planner settings: gripper, tool-down grasp, speed, gripper/cookie collision shapes |
 | `lynx_station.py` | Lynxmotion station: bench, cookie board, cookies, movable cookie jar |
 | `lynx_task.py` | Lynxmotion job (cookie segments, gripper actions) |
-| `main_scene.py` | Whole cell: TM5-700 plate, Lynxmotion cookie, (FR3 drink to come), JAKA coffee, then collection |
-| `demos_and_debug/` | Each station's demo (`coffee_demo.py`, `tm5_demo.py`, `lynx_demo.py`) plus test and debug scripts |
+| `fairino_fr3.py` | FAIRINO FR3 robot model and DH parameters with 3D mesh configuration |
+| `fairino_fr3_motion.py` | FR3 planner settings: top-down gripper, speeds, tool/drink collision geometry |
+| `fairino_fr3_station.py` | FR3 station: bench, cold drink, gripper, movable blue obstacle crate |
+| `fairino_fr3_task.py` | FR3 job: drink pick, carry, placement and gripper actions |
+| `FAIRINO_FR3_Meshes/` | 3D mesh files for the FAIRINO FR3 links |
+| `main_scene.py` | Whole cell: TM5-700 plate, Lynxmotion cookie, FR3 cold drink can, JAKA coffee, then collection |
+| `demos_and_debug/` | Each station's demo (`coffee_demo.py`, `tm5_demo.py`, `lynx_demo.py`, `fairino_fr3_demo.py`) plus test and debug scripts |
 
 ```
 python main_scene.py --plan                              # every robot's planned sequence, no Swift
@@ -48,6 +55,8 @@ python demos_and_debug/coffee_demo.py --plan             # one station: jtraj vs
 python demos_and_debug/coffee_demo.py                    # one station in Swift
 python demos_and_debug/tm5_demo.py                       # (--plan works for every demo)
 python demos_and_debug/lynx_demo.py
+python demos_and_debug/fairino_fr3_demo.py
+
 ```
 
 **Teach/jog and e-stops** (Swift side panel in every demo and `main_scene.py`):
@@ -62,6 +71,6 @@ python demos_and_debug/lynx_demo.py
 | --- | --- |
 | TM5-700 | `tm5_task.py` |
 | Lynxmotion SES-PRO | `lynx_task.py` |
+| FAIRINO FR3 | `fairino_fr3_task.py` |
 | JAKA MiniCobo | `coffee_task.py` |
-
 
