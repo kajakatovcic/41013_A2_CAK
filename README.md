@@ -5,7 +5,7 @@ SafeCo wants to present the safe, collaborative features of their robotic system
   <a href="https://youtu.be/DWSJ-DbVl58?si=Tdz84tgS0p2Su_Y8" target="_blank">
     <img src="https://youtu.be/DWSJ-DbVl58?si=Tdz84tgS0p2Su_Y8" alt="Watch our trailer!" width="70%" style="border-radius: 10px;" />
   </a >
-  <p><b>▶️ Click here to watch the full video tutorial</b></p>
+  <p><b>🤖 Click here to watch our video</b></p>
 </div>
 
 
