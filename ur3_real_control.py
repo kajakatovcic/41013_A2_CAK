@@ -123,22 +123,6 @@ def move_ur_joint_positions(client, joint_positions, duration=5.0):
     finally:
         print("[ROS] Finish")
 
-def set_gripper(client, action, settle=2.0):
-    """Open or close the OnRobot gripper via its std_srvs/Trigger service, then wait to settle.
-
-    action: 'open' or 'close'
-    """
-    service_name = f'/onrobot/{action}'
-    service = roslibpy.Service(client, service_name, 'std_srvs/Trigger')
-    print(f"[ROS] Calling service: {service_name}")
-    result = service.call(roslibpy.ServiceRequest({}), timeout=5.0)
-    print(f"[ROS] Response: success={result['success']}, message='{result['message']}'")
-    if not result['success']:
-        raise RuntimeError(f"Gripper {action} failed: {result['message']}")
-
-    # Give the fingers time to finish moving before the arm moves again
-    time.sleep(settle)
-
 if __name__ == '__main__':
     client = roslibpy.Ros(host='192.168.27.1', port=9090)  # Replace with your ROS bridge IP
     client.run()
@@ -147,15 +131,12 @@ if __name__ == '__main__':
         move_ur_joint_positions(client, HOME_Q, duration=7.0)
         move_ur_joint_positions(client, DOWN_Q, duration=7.0)
         move_ur_joint_positions(client, APPROACH_Q, duration=4.0)
-        set_gripper(client, 'open')   # open before descending onto the object
         move_ur_joint_positions(client, PICK_Q, duration=3.0)
-        set_gripper(client, 'close')  # grasp
         move_ur_joint_positions(client, APPROACH_Q, duration=3.0)
 
         # Turn the base 90 deg at approach height, lower, then lift clear
         move_ur_joint_positions(client, DROP_APPROACH_Q, duration=6.0)
         move_ur_joint_positions(client, DROP_Q, duration=3.0)
-        set_gripper(client, 'open')   # release
         move_ur_joint_positions(client, DROP_APPROACH_Q, duration=3.0)
         move_ur_joint_positions(client, DOWN_Q, duration=7.0)
     except KeyboardInterrupt:

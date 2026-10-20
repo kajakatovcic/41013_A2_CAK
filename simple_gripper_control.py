@@ -28,8 +28,8 @@ def main():
         time.sleep(2)
 
         # Close gripper
-        # call_service(client, '/onrobot/close')
-        # time.sleep(2)
+        call_service(client, '/onrobot/close')
+        time.sleep(2)
 
     finally:
         client.terminate()
