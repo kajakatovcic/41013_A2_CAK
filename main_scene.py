@@ -6,13 +6,13 @@ Smooth Oper-Caterer: Full workcell with every integrated robot
 
 FINAL JOINT STATES: each robot's final pose is set by FINAL_Q_DEG at the top
 of its job file (degrees). Change them there:
-    TM5-700            -> tm5_task.py
+    UR3e               -> ur3e_task.py
     Lynxmotion SES-PRO -> lynx_task.py
     Fairino FR3        -> fairino_fr3_task.py
     JAKA MiniCobo      -> coffee_task.py
 
 Order flow along the conveyor (one tray):
-    1. TM5-700  places a plate (tray stops at the TM5)
+    1. UR3e places a plate (tray stops at the UR3e)
     2. Lynxmotion SES-PRO places a cookie on the plate (tray stops at the Lynxmotion)
     3. FAIRINO FR3 places a cold drink - soda can (tray stops at the Fairino FR3)
     4. JAKA MiniCobo brews and places the coffee (tray stops at the JAKA)
@@ -36,11 +36,11 @@ TEACH/JOG (teach_pendant.py) below the safety controls:
     Joystick CROSS (X) button = PHYSICAL E-STOP, active in every mode.
 
 Each station also runs on its own from demos_and_debug/(coffee_demo.py,
-tm5_demo.py, lynx_demo.py).
+ur3e_demo.py, lynx_demo.py, fairino_fr3_demo.py).
 
 NOTE for TEAMMATES :)
-TO ADD A ROBOT: build it with its station and planner (see build_tm5 in
-tm5_station.py), give it a job with segments that wait for 'tray_at_<name>'
+TO ADD A ROBOT: build it with its station and planner (see build_ur3e in
+ur3e_station.py), give it a job with segments that wait for 'tray_at_<name>'
 and set '<name>_placed', add its RobotLane below, and add its stop to the
 conveyor lane in order.
 """
@@ -51,8 +51,8 @@ import numpy as np
 
 from coffee_station import build_jaka
 from coffee_task import CoffeeJob
-from tm5_station import build_tm5
-from tm5_task import PlateJob
+from ur3e_station import build_ur3e
+from ur3e_task import PlateJob
 from lynx_station import build_lynx
 from lynx_task import LynxJob
 from fairino_fr3_station import build_fr3
@@ -68,27 +68,27 @@ from teach_pendant import TeachPendant
 
 def build_scene(safety):
     """Every integrated robot, its station, and one sequencer which drives all robots."""
-    # The tray starts empty at the upstream end. The TM5 places the plate.
+    # The tray starts empty at the upstream end. The UR3e places the plate.
     cell = Workcell(tray_x=TRAY_ENTRY_X, tray_placeholders=())
     tray = cell.conveyor.tray
 
-    tm5, tm5_station, tm5_planner = build_tm5()
+    ur3e, ur3e_station, ur3e_planner = build_ur3e()
     lynx, lynx_station, lynx_planner = build_lynx()
     jaka, jaka_station, jaka_planner = build_jaka()
     fr3, fr3_station, fr3_planner = build_fr3()
-    tm5.q = np.zeros(6)
+    ur3e.q = np.array(ur3e.home_q, dtype=float) # arm up, as for the FR3
     lynx.q = np.zeros(6)
     fr3.q = np.array(fr3.home_q, dtype=float)
     jaka.q = np.zeros(6)
 
-    plate_job = PlateJob(tm5_station, tray)
+    plate_job = PlateJob(ur3e_station, tray)
     lynx_job = LynxJob(lynx_station, tray)
     fr3_job = FR3Job(fr3_station, tray)
     coffee_job = CoffeeJob(jaka_station, tray)
 
     S = Segment
     conveyor = [
-        S("convey", "tray -> TM5 station", x=plate_job.tray_stop_x, sets="tray_at_tm5"),
+        S("convey", "tray -> UR3e station", x=plate_job.tray_stop_x, sets="tray_at_ur3e"),
         S("convey", "tray -> Lynxmotion station", x=lynx_job.tray_stop_x,
           requires="plate_placed", sets="tray_at_lynx"),
         S("convey", "tray -> FAIRINO FR3 station", x=fr3_job.tray_stop_x,
@@ -98,11 +98,11 @@ def build_scene(safety):
         S("convey", "tray -> collection zone", x=COLLECTION_X,
           requires="coffee_placed", sets="delivered"),
     ]
-    # Each robot's sequence ends with its final joint state, set by
-    # FINAL_Q_DEG in tm5_task.py (TM5), lynx_task.py (Lynxmotion) and
-    # coffee_task.py (JAKA).
+    # Each robot's sequence ends with its final joint state set by
+    # FINAL_Q_DEG in ur3e_task.py (UR3e), lynx_task.py (Lynxmotion),
+    # fairino_fr3_task.py (FR3) and coffee_task.py (JAKA).
     lanes = [
-        RobotLane("TM5", tm5, tm5_planner, plate_job, plate_job.segments()),
+        RobotLane("UR3e", ur3e, ur3e_planner, plate_job, plate_job.segments()),
         RobotLane("Lynxmotion", lynx, lynx_planner, lynx_job, lynx_job.segments()),
         RobotLane("FAIRINO FR3", fr3, fr3_planner, fr3_job, fr3_job.segments()),
         RobotLane("JAKA", jaka, jaka_planner, coffee_job, coffee_job.segments()),
@@ -111,8 +111,8 @@ def build_scene(safety):
     sequencer = TaskSequencer(safety, lanes)
     # The Lynxmotion has no add_to_env of its own. Its station draws and moves
     # its link meshes, so only the station is added to Swift.
-    parts = [tm5_station, tm5, lynx_station, fr3_station, fr3, jaka_station, jaka]
-    stations = {"TM5": tm5_station, "Lynxmotion": lynx_station, "FAIRINO_FR3": fr3_station, "JAKA": jaka_station}
+    parts = [ur3e_station, ur3e, lynx_station, fr3_station, fr3, jaka_station, jaka]
+    stations = {"UR3e": ur3e_station, "Lynxmotion": lynx_station, "FAIRINO_FR3": fr3_station, "JAKA": jaka_station}
     return cell, sequencer, parts, stations
 
 

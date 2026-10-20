@@ -29,14 +29,14 @@ The integrated Swift panel also provides controlled movable obstacles for collis
 | `motion_planner.py` | **Shared by every robot**: jtraj for free-space moves and RMRC for constrained Cartesian moves, IK, collision checks, active avoidance. Details changing per robot go in a `PlannerSettings` |
 | `task_sequencer.py` | **Shared**: runs every robot and the conveyor frame by frame as 'lanes' synchronised by flags. Re-plans after a stop or when an obstacle moves |
 | `cell_runner.py` | **Shared**: Swift set-up, safety panel and real-time loop |
-| `teach_pendant.py` | **Shared**: teach/jog GUI (AUTO / MANUAL, joint sliders, Cartesian X/Y/Z jog), pygame joystick jogging with rumble at joint limits, joystick Cross (X) button = physical e-stop |
+| `teach_pendant.py` | **Shared**: teach/jog GUI (AUTO / MANUAL, joint sliders), pygame joystick jogging with rumble at joint limits, joystick Cross (X) button = physical e-stop |
 | `plan_report.py` | **Shared**: Use `--plan` for jtraj vs RMRC comparison and planned-sequence tables |
 | `jaka_motion.py` | JAKA planner settings: gripper, side grasp, speeds, gripper/cup collision shapes |
 | `coffee_station.py` | JAKA station: bench, cup dispenser, coffee machine, cup, gripper, movable milk pitcher |
 | `coffee_task.py` | JAKA job (coffee segments, gripper and brew actions) |
-| `tm5_motion.py` | TM5-700 planner settings: suction tool, tool-down grasp, speeds, tool/plate collision shapes |
-| `tm5_station.py` | TM5-700 station: bench, plate dispenser with guide posts, plates, suction tool |
-| `tm5_task.py` | TM5-700 job (plate segments, suction actions) |
+| `ur3e_motion.py` | UR3e planner settings: suction tool, tool-down grasp, speeds, tool/plate collision shapes |
+| `ur3e_station.py` | UR3e station: bench, plate dispenser with guide posts, plates, suction tool |
+| `ur3e_task.py` | UR3e job (plate segments, suction actions) |
 | `lynx_motion.py` | Lynxmotion planner settings: gripper, tool-down grasp, speed, gripper/cookie collision shapes |
 | `lynx_station.py` | Lynxmotion station: bench, cookie board, cookies, movable cookie jar |
 | `lynx_task.py` | Lynxmotion job (cookie segments, gripper actions) |
@@ -45,15 +45,15 @@ The integrated Swift panel also provides controlled movable obstacles for collis
 | `fairino_fr3_station.py` | FR3 station: bench, cold drink, gripper, movable blue obstacle crate |
 | `fairino_fr3_task.py` | FR3 job: drink pick, carry, placement and gripper actions |
 | `FAIRINO_FR3_Meshes/` | 3D mesh files for the FAIRINO FR3 links |
-| `main_scene.py` | Whole cell: TM5-700 plate, Lynxmotion cookie, FR3 cold drink can, JAKA coffee, then collection |
-| `demos_and_debug/` | Each station's demo (`coffee_demo.py`, `tm5_demo.py`, `lynx_demo.py`, `fairino_fr3_demo.py`) plus test and debug scripts |
+| `main_scene.py` | Whole cell: UR3e plate, Lynxmotion cookie, FR3 cold drink can, JAKA coffee, then collection |
+| `demos_and_debug/` | Each station's demo (`coffee_demo.py`, `ur3e_demo.py`, `lynx_demo.py`, `fairino_fr3_demo.py`) plus test and debug scripts |
 
 ```
 python main_scene.py --plan                              # every robot's planned sequence, no Swift
 python main_scene.py                                     # the whole cell: press START in the side panel
 python demos_and_debug/coffee_demo.py --plan             # one station: jtraj vs RMRC table + planned sequence
 python demos_and_debug/coffee_demo.py                    # one station in Swift
-python demos_and_debug/tm5_demo.py                       # (--plan works for every demo)
+python demos_and_debug/ur3e_demo.py                      # (--plan works for every demo)
 python demos_and_debug/lynx_demo.py
 python demos_and_debug/fairino_fr3_demo.py
 
@@ -69,7 +69,7 @@ python demos_and_debug/fairino_fr3_demo.py
 
 | Robot | File |
 | --- | --- |
-| TM5-700 | `tm5_task.py` |
+| UR3e | `ur3e_task.py` |
 | Lynxmotion SES-PRO | `lynx_task.py` |
 | FAIRINO FR3 | `fairino_fr3_task.py` |
 | JAKA MiniCobo | `coffee_task.py` |

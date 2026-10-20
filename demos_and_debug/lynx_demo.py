@@ -9,7 +9,7 @@ Sequence: an empty tray rides in from the upstream end of the conveyor to the
 Lynxmotion station. Meanwhile the Lynxmotion lowers its gripper onto a cookie
 on the board, lifts it, carries it level round to the tray and places it.
 The conveyor then takes the tray on to the collection zone. (In main_scene.py
-the plate is placed first by the TM5-700 and the cookie goes on the plate.)
+the plate is placed first by the UR3e and the cookie goes on the plate.)
 
 Swift panel controls: the shared safety panel (cell_runner.py), plus
     Cookie jar in path - deliberately place an object in the cookie's carry path

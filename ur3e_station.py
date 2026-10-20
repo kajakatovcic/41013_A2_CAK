@@ -1,21 +1,30 @@
-# OMRON TM5-700 plate station: bench, plate dispenser plates and the suction
+# UR3e plate station: bench, plate dispenser plates and the suction
 # cup as its "tool"
 #
 # Every prop is placed from the robot's BASE frame with the same polar
 # convention as the shared planner, (r, phi, h) - r = distance from the base
 # axis, phi = bearing from the base x-axis, h = height above the base plate
 # (= the counter top). This means a plate sits exactly where the planner reaches for
-# it. If you move the TM5 base in workcell_layout.STATIONS,  the
+# it. If you move the UR3e base in workcell_layout.STATIONS,  the
 # station follows.
 #
-#                plate dispenser       TM5
-#                phi = 180 deg   ------ o
+# The UR3e base is mounted turned +90 deg about z (workcell_layout.STATIONS),
+# so its x-axis points at the conveyor:
+#
+#                plate dispenser       UR3e
+#                phi = +90 deg   ------ o
 #                                       |
-#                         tray plate slot on the conveyor, phi = +90 deg
+#                         tray plate slot on the conveyor, phi = 0 deg
 #
 # The dispenser is on the upper side so the loaded carry to the tray is a
 # quarter turn and staff refill plates from the upstream end of the cell
 # away from the moving conveyor. (safety)
+#
+# REACH: the UR3e is a small arm (0.244 + 0.213m links). With the 0.133m
+# suction tool pointing down it reaches about 0.50m at counter height but only
+# 0.45m at 0.20m up and 0.35m at 0.30m up (measured by an IK sweep). So the
+# dispenser and the tray slot sit close to the base and the plate is carried
+# low. Short guide posts keep the lift height (and the carry) at 0.19m.
 
 from math import pi
 
@@ -25,23 +34,24 @@ from spatialgeometry import Cuboid, Cylinder, Mesh
 from ir_support_extra_parts import part_path
 
 from collisions import Obstacle
-from ir_support_extra_robots.robots import OmronTM5700
+from ir_support import UR3e
 
-from tm5_motion import suction_pose, TM5Planner, ADAPTER_HEIGHT, CUP_SCALE, PLATE_CONTACT
-from workcell_layout import STATIONS, Z_COUNTER
+from ur3e_motion import suction_pose, UR3ePlanner, ADAPTER_HEIGHT, CUP_SCALE, PLATE_CONTACT
+from workcell_layout import STATIONS, Z_COUNTER, CONVEYOR_Y, BELT_WIDTH
 from workcell_scene import Tray
 
-# Plate dispenser (in the TM5 base frame)
-PHI_DISPENSER = pi
-PHI_TRAY = pi / 2
-R_DISPENSER = 0.45
-R_TRAY = 0.55 # = TM5 base to the tray's plate slot (workcell_layout.TM5_Y)
+# Plate dispenser (in the UR3e base frame)
+PHI_DISPENSER = pi / 2
+PHI_TRAY = 0.0
+R_DISPENSER = 0.35
+R_TRAY = 0.42 # = UR3e base to the tray's plate slot (workcell_layout.UR3E_Y)
 
 DISPENSER_BASE = 0.03 # height of the dispenser's base plate
 N_PLATES = 6
 PLATE_PITCH = 0.010 # nested plates stack 10mm apart
 POST_RADIUS = 0.15 # guide posts around the stack (plate rim at 0.115)
-POST_HEIGHT = 0.22
+POST_HEIGHT = 0.12 # tall enough to guide the 6-plate stack, short enough that
+                  # the lift (and carry) height stays inside the UR3e's reach
 
 # Heights of the suction cup's contact point (TCP) above the counter
 H_PICK = DISPENSER_BASE + (N_PLATES - 1) * PLATE_PITCH + PLATE_CONTACT
@@ -56,7 +66,7 @@ H_CLEAR_TRAY = H_PLACE + 0.115 # empty suction cup lifted clear of the plate
 
 # Named TCP targets as (r, phi, h). Used by the task and by the props below.
 POSES = {
-    "ready":       (0.35, 3 * pi / 4, 0.30), # between the dispenser and the tray
+    "ready":       (0.28, pi / 4, 0.25), # between the dispenser and the tray
     "above_stack": (R_DISPENSER, PHI_DISPENSER, H_ABOVE_STACK),
     "pick":        (R_DISPENSER, PHI_DISPENSER, H_PICK),
     "above_tray":  (R_TRAY, PHI_TRAY, H_CARRY),
@@ -64,13 +74,20 @@ POSES = {
     "clear_tray":  (R_TRAY, PHI_TRAY, H_CLEAR_TRAY),
 }
 
-# Seeds for ikine_LM - elbow up with the tool pointing down. joint 1 is
-# replaced with the target bearing when used.
+# Seeds for ikine_LM with the tool pointing down, all on the same elbow branch
+# (checked at every target: other seeds flip the UR3e to a folded pose at the
+# pick). joint 1 is replaced with the target bearing when used.
 IK_SEEDS = [
-    np.array([0, -0.6, 1.6, -1.0, 1.57, 0]),
-    np.array([0, 0.3, 1.8, -0.5, 1.57, 0]),
-    np.array([0, -0.3, 2.0, -1.7, -1.57, 0]),
+    np.array([0, -1.2, -1.6, -1.9, pi / 2, 0]),
+    np.array([0, -pi / 2, -pi / 2, -pi / 2, pi / 2, 0]),
 ]
+
+# Named joint state at the "ready" pose (like qready in the labs), solved once
+# with ikine_LM from IK_SEEDS[0]. The first move from home goes here in joint
+# space: solving the ready pose from the straight-up home pose would pick the
+# least-travel elbow-down branch, which drops the shoulder link to 0.05 m above
+# the counter at the tray. From here every later IK stays on this branch.
+READY_Q = np.deg2rad([72.9, -81.8, -75.7, -112.6, 90.0, -62.1])
 
 
 class Plate:
@@ -95,7 +112,7 @@ class Plate:
 
 
 class SuctionTool:
-    """suction tool on the TM5 flange. Built a 'fake' adapter block + suction cup."""
+    """suction tool on the UR3e flange. Built a 'fake' adapter block + suction cup."""
 
     def __init__(self):
         self.adapter = Cuboid(scale=[0.06, 0.06, ADAPTER_HEIGHT], color=(0.20, 0.22, 0.25, 1.0))
@@ -115,7 +132,7 @@ class SuctionTool:
 
 class PlateStation:
     """
-    Builds the bench and plate dispenser around the TM5 and owns their
+    Builds the bench and plate dispenser around the UR3e and owns their
     collision obstacles. 'obstacles' is handed to the planner as a list
     """
 
@@ -129,12 +146,15 @@ class PlateStation:
 
     def _build_bench(self):
         """
-        ir_support_extra_parts 'Workbench' scaled. The 0.93m top is the
-        counter height
+        ir_support_extra_parts 'Workbench' scaled to 1.6 x 1.125m. The 0.93m
+        top is the counter height. Its front edge is placed against the
+        conveyor's side frame (not relative to the base), so moving the base
+        cannot push the bench onto the belt.
         """
-        bx, by = self.base.t[0], self.base.t[1]
+        bx = self.base.t[0]
+        front_y = CONVEYOR_Y - BELT_WIDTH / 2 - 0.02
         self.shapes.append(Mesh(str(part_path("Workbench")), scale=[0.64, 1.5, 1.0],
-                                pose=SE3(bx - 0.1, by - 0.2575, 0)))
+                                pose=SE3(bx - 0.1, front_y - 1.125 / 2, 0)))
 
     def _build_dispenser(self):
         """
@@ -180,10 +200,11 @@ class PlateStation:
 MIN_LINK_Z = Z_COUNTER + 0.05
 
 
-def build_tm5(obstacles=None):
-    """The TM5-700, its plate station and its planner."""
-    base = STATIONS["TM5700"][0]
-    robot = OmronTM5700(base=base)
+def build_ur3e(obstacles=None):
+    """The UR3e, its plate station and its planner. The UR3e starts at its
+    home pose (arm straight up) as set by the ir_support model."""
+    base = STATIONS["UR3e"][0]
+    robot = UR3e(base=base)
     station = PlateStation(base)
-    planner = TM5Planner(robot, station.obstacles if obstacles is None else obstacles, MIN_LINK_Z)
+    planner = UR3ePlanner(robot, station.obstacles if obstacles is None else obstacles, MIN_LINK_Z)
     return robot, station, planner

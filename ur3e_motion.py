@@ -1,8 +1,8 @@
-# Motion settings for the OMRON TM5-700 plate station
+# Motion settings for the UR3e plate station
 #
-# It uses the shared planner in motion_planner.py. This file only holds its 
-# specifics, i.e. suction cup tool, tool-down grasp, speed and collision shapes
-# of the tool and the plate.
+# Uses the shared planner in motion_planner.py. This file only holds its 
+# specifics i.e. suction cup tool, tool-down grasp, speed and collision
+# shapes of the tool and the plate.
 #
 # Picks the top plate from a plate dispenser with a suction cup and places
 # it on the tray at the first conveyor stop.
@@ -36,24 +36,24 @@ DOWN_ROLL = pi
 PLATE_RADIUS = 0.115
 PLATE_HEIGHT = 0.0225
 PLATE_CONTACT = 0.005
-# Plate mid-height measured along tool z (down) from the TCP. 
+# Plate mid-height measured along tool z (down) from the TCP.
 # It is slightly above the TCP because the plate rim is above its centre
 PLATE_MID = PLATE_CONTACT - PLATE_HEIGHT / 2
 
-# RMRC tool speed cap. 
+# RMRC tool speed cap.
 # Stays under the 0.25 m/s reduced-speed figure for collaborative operation
 TCP_SPEED = 0.20 # m/s
 
-# Manipulability threshold for DLS
-# The TM5-700 is larger than the JAKA so its values are larger
-MANIP_EPSILON = 0.01
+# Manipulability threshold for DLS. The UR3e's values along this task are
+# 0.009-0.021, so the threshold is set at roughly a third of that.
+MANIP_EPSILON = 0.004
 
 # Collision shapes
 # ELLIPSOIDS for the tool and plate: the plate is 0.23m wide and is lifted
 # between guide posts and is very close. THe centre line says nothing about
 # whether its rim hits a post. An ellipsoid would have the width (see lab 6)
 # Line plane intersection also used as the obstacle side of the ellipsoid
-# test is a point cloud which can be passed between points. 
+# test is a point cloud which can be passed between points.
 # A cross of centre-lines across the plate (two diameters) is used
 
 # Suction tool ellipsoid iscentred halfway along the tool to cover the
@@ -71,13 +71,13 @@ def _plate_cross():
             ((PLATE_RADIUS, 0), (-PLATE_RADIUS, 0), (0, PLATE_RADIUS), (0, -PLATE_RADIUS))]
 
 
-TM5_SETTINGS = PlannerSettings(
+UR3E_SETTINGS = PlannerSettings(
     tool=TOOL,
     roll=DOWN_ROLL, pitch=0.0,
     payload_up=(0, 0, -1),# the plate's up is tool -z
     tcp_speed=TCP_SPEED,
     manip_epsilon=MANIP_EPSILON,
-    via_min_radius=0.30,
+    via_min_radius=0.20, 
     tool_chain=[TOOL],
     payload_chain=_plate_cross(),
     tool_ellipsoids=[SUCTION_ELLIPSOID],
@@ -88,15 +88,15 @@ TM5_SETTINGS = PlannerSettings(
 def suction_pose(base, r, phi, h):
     """
     World TCP pose with the suction cup pointing straight down at polar coords
-    (r, phi, h) in the TM5 base frame. Same as MotionPlanner.pose_at with the
-    TM5 settings. a plain function so props can be placed before a planner
+    (r, phi, h) in the UR3e base frame. Same as MotionPlanner.pose_at with the
+    UR3e settings. a plain function so props can be placed before a planner
     exists.
     """
     return base * SE3(r * np.cos(phi), r * np.sin(phi), h) * SE3.Rz(phi) * SE3.Rx(DOWN_ROLL)
 
 
-class TM5Planner(MotionPlanner):
-    """The shared planner set up with the TM5-700's settings"""
+class UR3ePlanner(MotionPlanner):
+    """The shared planner set up with the UR3e's settings"""
 
     def __init__(self, robot, obstacles, min_link_z):
-        super().__init__(robot, obstacles, min_link_z, TM5_SETTINGS)
+        super().__init__(robot, obstacles, min_link_z, UR3E_SETTINGS)

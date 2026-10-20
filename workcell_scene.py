@@ -120,10 +120,9 @@ class Tray:
         """
         param placeholders: which items the tray starts with, standing in for
             what upstream robots deliver until their tasks are integrated
-            (TM5-700 plate, Lynxmotion food, FR3 drink). The JAKA demo starts
-            with all three. The TM5 demo, Lynxmotion demo and main scene start
+            (UR3e plate, Lynxmotion food, FR3 drink). The JAKA demo starts
+            with all three. The UR3e demo, Lynxmotion demo and main scene start
             with an empty tray because the robots place the real items.
-            @TODO: the FR3's drink is still missing from the main scene.
         """
         self.mesh = Mesh(str(part_path("Tray")), scale=self.SCALE, color=(0.20, 0.35, 0.55, 1.0))
         self.attached = [] # (object with set_pose, local SE3)
@@ -206,7 +205,7 @@ class Conveyor:
 
 
 # The whole shared cell. Robots and their props are built by their own
-# station files (coffee_station.py, tm5_station.py, lynx_station.py).
+# station files (coffee_station.py, ur3e_station.py, lynx_station.py).
 class Workcell:
     """
     Everything except the robots and their station props. Holds handles the
@@ -216,7 +215,7 @@ class Workcell:
 
     # Stations whose robot and props are built by their own station file, so
     # they get no "reserved" floor pad.
-    IMPLEMENTED = ("JAKA", "TM5700", "Lynxmotion")
+    IMPLEMENTED = ("JAKA", "UR3e", "Lynxmotion")
 
     def __init__(self, tray_x=TRAY_START_X, tray_placeholders=Tray.ALL_PLACEHOLDERS):
         """
