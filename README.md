@@ -6,7 +6,7 @@ The system features 4 collaborative robots handling multiple catering related ta
 * Lynxmotion SES-PRO 900mm 6Dof Modular Robotic Arm Kit: Used for kinematics applications by engineering students, something that is very appealing for future opportunities and experiences. The 3kg payload limit also enables a versatile range in task options.
 * FAIRINO FR3 Collaborative Robot 6-axis compact collaborative robot: A 3 kg payload, 622 mm reach and ±0.02 mm repeatability. This robot is especially suited for production environments where space may be limited while delivering precise and repeatable control actions. The FR3 is suitable for companies that may have little to no robotics experience where motion can be taught directly on the robot combined with sequences via an intuitive user interface. This makes it a suitable robot solution accessible for beginner applications with the option of further implementations.
 * JAKA MiniCobo: Ultra-lightweight, 6DoF cobot explicitly designed for service, commercial, and hospitality environments. Weighing just 9.4 kg with a 1 kg payload capacity and a 580 mm reach, it offers unique advantages for catering, cafés, and food service automation.
-* OMRON TM5700: A medium-duty robotic arm with a 6 kg payload and 700 mm reach, making it suitable for automated food packaging, end-of-line palletizing, and material handling in food production.
+* Universal Robots UR3e: A compact robotic arm with a 3 kg payload and 500 mm reach, making it suitable for precise, automated catering tasks.
 
 # Contributors
 * Christina Eugene - FAIRINO FR3
@@ -14,7 +14,7 @@ The system features 4 collaborative robots handling multiple catering related ta
 * Kaja Katovcic - JAKA MiniCobo 
 
 # Shared workcell
-All positions live in `workcell_layout.py` (one world frame). Mount your robot at `STATIONS[...]` and place your props relative to that base frame, the way `coffee_station.py` does for the JAKA. The tray stops for each station on the conveyor and carries the order out through the light curtain to the collection zone.
+All positions live in `workcell_layout.py` (one world frame). Robots are mounted at `STATIONS[...]` and props are placed relative to that base frame.The tray stops for each station on the conveyor and carries the order out through the light curtain to the collection zone.
 
 Each robot has a station demo that runs on its own and `main_scene.py` runs every integrated robot together. All of them share one planner, one sequencer, one safety controller and one Swift panel.
 

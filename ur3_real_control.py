@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-# new_ur_control_script duplicate for testing changing joint trajectory states
+# Roslibpy script for controlling the real UR3e.
+# Sourced from base 'new_ur_control_script-1.py' from IR Canvas page
+# Customised to suit the UR3e's purpose in our workcell, i.e. pick and place
+# action of plates into a designated 'drop-off' zone within its workspace.
 import time
 import roslibpy
 import numpy as np
@@ -22,10 +25,10 @@ def tool_down_q(reach, z, pan=0.0):
     """Elbow-up joint config with the tool pointing straight down.
 
     reach: horizontal distance (m) from the base axis to the flange, in the arm's plane
-    z:     flange height (m) above the base. This is the flange, NOT the gripper tip.
+    z: flange height (m) above the base. This is the flange, NOT the gripper tip.
     Tool points down when wrist2 = -pi/2 and lift + elbow + wrist1 = -pi/2.
     """
-    # Wrist 1 centre sits D5 back from the flange and D6 above it; solve the 2-link arm to it
+    # Wrist 1 centre sits D5 back from the flange and D6 above it. Solves the 2-link arm to it
     r = reach - D5
     h = z + D6 - D1
     c = (r**2 + h**2 - A2**2 - A3**2) / (2 * A2 * A3)
@@ -36,9 +39,9 @@ def tool_down_q(reach, z, pan=0.0):
     wrist1 = -np.pi/2 - lift - elbow
     return [pan, lift, elbow, wrist1, -np.pi/2, 0.0]
 
-# Pick location and heights (flange). Raise Z_RAISE if the gripper still gets too close.
+# Pick location and heights (flange). Raise Z_RAISE if the gripper still gets too close to the plate/base surface.
 PICK_REACH = 0.2986
-Z_RAISE    = 0.10  # extra clearance for the long gripper
+Z_RAISE = 0.10  # extra clearance for the long gripper
 
 # Joint configs [pan, lift, elbow, wrist1, wrist2, wrist3] in radians
 HOME_Q     = [0.0, -np.pi/2, 0.0, -np.pi/2, 0.0, 0.0]          # arm straight up
