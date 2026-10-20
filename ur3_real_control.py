@@ -6,14 +6,68 @@ import numpy as np
 
 current_pos = None
 
+JOINT_NAMES = [
+    'shoulder_pan_joint',
+    'shoulder_lift_joint',
+    'elbow_joint',
+    'wrist_1_joint',
+    'wrist_2_joint',
+    'wrist_3_joint'
+]
+
+# UR3e DH lengths (m)
+D1, A2, A3, D5, D6 = 0.15185, 0.24355, 0.2132, 0.08535, 0.0921
+
+def tool_down_q(reach, z, pan=0.0):
+    """Elbow-up joint config with the tool pointing straight down.
+
+    reach: horizontal distance (m) from the base axis to the flange, in the arm's plane
+    z:     flange height (m) above the base. This is the flange, NOT the gripper tip.
+    Tool points down when wrist2 = -pi/2 and lift + elbow + wrist1 = -pi/2.
+    """
+    # Wrist 1 centre sits D5 back from the flange and D6 above it; solve the 2-link arm to it
+    r = reach - D5
+    h = z + D6 - D1
+    c = (r**2 + h**2 - A2**2 - A3**2) / (2 * A2 * A3)
+    if abs(c) > 1.0:
+        raise ValueError(f"Tool-down pose out of reach: reach={reach}, z={z}")
+    elbow = np.arccos(c)
+    lift = -(np.arctan2(h, r) + np.arctan2(A3 * np.sin(elbow), A2 + A3 * np.cos(elbow)))
+    wrist1 = -np.pi/2 - lift - elbow
+    return [pan, lift, elbow, wrist1, -np.pi/2, 0.0]
+
+# Pick location and heights (flange). Raise Z_RAISE if the gripper still gets too close.
+PICK_REACH = 0.2986
+Z_RAISE    = 0.10  # extra clearance for the long gripper
+
+# Joint configs [pan, lift, elbow, wrist1, wrist2, wrist3] in radians
+HOME_Q     = [0.0, -np.pi/2, 0.0, -np.pi/2, 0.0, 0.0]          # arm straight up
+DOWN_Q     = tool_down_q(PICK_REACH, 0.30 + Z_RAISE)           # tool down, high
+APPROACH_Q = tool_down_q(PICK_REACH, 0.20 + Z_RAISE)           # tool down, above object
+PICK_Q     = tool_down_q(PICK_REACH, 0.15 + Z_RAISE)           # tool down, grasp height
+
+# Drop-off: same poses with the base turned 90 deg (+ = counterclockwise seen from above).
+# Only the pan joint changes, so the tool stays pointing down at the same reach and height.
+DROP_PAN = np.pi/2
+
+def rotate_base(q, pan_offset):
+    """Return a copy of joint config q with the shoulder pan joint offset by pan_offset."""
+    return [q[0] + pan_offset] + list(q[1:])
+
+DROP_APPROACH_Q = rotate_base(APPROACH_Q, DROP_PAN)  # tool down, same height as APPROACH_Q
+DROP_Q          = rotate_base(PICK_Q, DROP_PAN)      # tool down, same height as PICK_Q
+
 def joint_state_cb(message):
     global current_pos
-    # The JointState message contains 'position' array
-    current_pos = list(message['position'])
+    # /joint_states is published in alphabetical order, so reorder by name
+    name_to_pos = dict(zip(message['name'], message['position']))
+    current_pos = [name_to_pos[n] for n in JOINT_NAMES]
 
 def move_ur_joint_positions(client, joint_positions, duration=5.0):
     global current_pos
-    
+    # Clear the previous reading so each move starts from a fresh joint state
+    current_pos = None
+
 
     try:
         client.run()
@@ -30,22 +84,11 @@ def move_ur_joint_positions(client, joint_positions, duration=5.0):
         if current_pos is None:
             raise RuntimeError("No joint state received from /ur/joint_states")
 
-        # Swap first and third joint positions
-        current_pos[0], current_pos[2] = current_pos[2], current_pos[0]
         print(f"[ROS] Current joint positions: {current_pos}")
 
         # Build a JointTrajectory message for the scaled_pos_joint_traj_controller
-        joint_names = [
-            'shoulder_pan_joint',
-            'shoulder_lift_joint',
-            'elbow_joint',
-            'wrist_1_joint',
-            'wrist_2_joint',
-            'wrist_3_joint'
-        ]
-
         trajectory_msg = {
-            'joint_names': joint_names,
+            'joint_names': JOINT_NAMES,
             'points': [
                 {
                     'positions': current_pos,
@@ -80,12 +123,40 @@ def move_ur_joint_positions(client, joint_positions, duration=5.0):
     finally:
         print("[ROS] Finish")
 
+def set_gripper(client, action, settle=2.0):
+    """Open or close the OnRobot gripper via its std_srvs/Trigger service, then wait to settle.
+
+    action: 'open' or 'close'
+    """
+    service_name = f'/onrobot/{action}'
+    service = roslibpy.Service(client, service_name, 'std_srvs/Trigger')
+    print(f"[ROS] Calling service: {service_name}")
+    result = service.call(roslibpy.ServiceRequest({}), timeout=5.0)
+    print(f"[ROS] Response: success={result['success']}, message='{result['message']}'")
+    if not result['success']:
+        raise RuntimeError(f"Gripper {action} failed: {result['message']}")
+
+    # Give the fingers time to finish moving before the arm moves again
+    time.sleep(settle)
+
 if __name__ == '__main__':
     client = roslibpy.Ros(host='192.168.27.1', port=9090)  # Replace with your ROS bridge IP
     client.run()
     try:
-        # Example: move slightly and back
-        target_joint_positions = [0.0, -np.pi/2, 0.0, -np.pi/2, 0.0, 0.0]
-        move_ur_joint_positions(client, target_joint_positions, duration=7.0)
+        # Home -> tool pointing down -> approach -> pick, then back up
+        move_ur_joint_positions(client, HOME_Q, duration=7.0)
+        move_ur_joint_positions(client, DOWN_Q, duration=7.0)
+        move_ur_joint_positions(client, APPROACH_Q, duration=4.0)
+        set_gripper(client, 'open')   # open before descending onto the object
+        move_ur_joint_positions(client, PICK_Q, duration=3.0)
+        set_gripper(client, 'close')  # grasp
+        move_ur_joint_positions(client, APPROACH_Q, duration=3.0)
+
+        # Turn the base 90 deg at approach height, lower, then lift clear
+        move_ur_joint_positions(client, DROP_APPROACH_Q, duration=6.0)
+        move_ur_joint_positions(client, DROP_Q, duration=3.0)
+        set_gripper(client, 'open')   # release
+        move_ur_joint_positions(client, DROP_APPROACH_Q, duration=3.0)
+        move_ur_joint_positions(client, DOWN_Q, duration=7.0)
     except KeyboardInterrupt:
         print("\n[APP] Interrupted by user.")
