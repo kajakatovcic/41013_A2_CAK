@@ -1,6 +1,14 @@
 # Presenting: The Smooth Oper-Caterer - 41013 (Industrial Robotics)
 SafeCo wants to present the safe, collaborative features of their robotic systems at conferences and meetings through an interactive catering system during lunch/tea breaks. Attendees can experience the complex capabilities of SafeCo’s systems as they are served their choice of food, beverages and accompaniments from the ‘Smooth Oper-Caterer’.
 
+<div align="center">
+  <a href="https://youtu.be/DWSJ-DbVl58?si=Tdz84tgS0p2Su_Y8" target="_blank">
+    <img src="https://youtu.be/DWSJ-DbVl58?si=Tdz84tgS0p2Su_Y8" alt="Watch our trailer!" width="70%" style="border-radius: 10px;" />
+  </a >
+  <p><b>▶️ Click here to watch the full video tutorial</b></p>
+</div>
+
+
 The system features 4 collaborative robots handling multiple catering related tasks for an efficient, and safe display of SafeCo's engineering abilities.
 
 * Lynxmotion SES-PRO 900mm 6Dof Modular Robotic Arm Kit: Used for kinematics applications by engineering students, something that is very appealing for future opportunities and experiences. The 3kg payload limit also enables a versatile range in task options.
