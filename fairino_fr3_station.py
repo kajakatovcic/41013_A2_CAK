@@ -93,12 +93,12 @@ class ColdDrink:
     RADIUS = 0.033
     HEIGHT = 0.115
 
-    def __init__(self, pose):
+    def __init__(self, pose, color=(0.75, 0.15, 0.15, 1.0)):
 
         self.shape = Cylinder(
             radius=self.RADIUS,
             length=self.HEIGHT,
-            color=(0.75, 0.15, 0.15, 1.0)
+            color=color
         )
 
         self.set_pose(pose)
@@ -123,7 +123,7 @@ class ColdDrink:
 # -----------------------------------------------------------------------------#
 
 OBSTACLE_CRATE_SIZE = (
-    0.12,   # X width
+    0.20,   # X width
     0.10,   # Y depth
     0.19    # Z height
 )
@@ -164,12 +164,24 @@ class ObstacleCrate:
             color=OBSTACLE_CRATE_COLOUR
         )
 
+        # Thin white rectangle on the front face
+        self.label = Cuboid(
+            scale=[
+                OBSTACLE_CRATE_SIZE[0] * 0.90,  # width
+                0.006,                         # very thin
+                OBSTACLE_CRATE_SIZE[2] * 0.28  # height
+            ],
+            color=(0.95, 0.95, 0.95, 1.0)
+        )
+
         self.set_pose(pose)
 
     def set_pose(self, pose):
 
         self.pose = pose
         self.shape.T = pose.A
+        # White label on the front face
+        self.label.T = (pose * SE3(0, + (OBSTACLE_CRATE_SIZE[1] / 2 + 0.004), 0.02)).A
 
 # -----------------------------------------------------------------------------#
 # FR3 task target positions
@@ -277,6 +289,8 @@ class FR3Station:
         )
 
         self.drink = ColdDrink(drink_pose)
+        self.decor_cans = []
+        self._build_decor_cans()
 
     def _obstacle_crate_pose(self, r_phi):
 
@@ -290,6 +304,68 @@ class FR3Station:
                 OBSTACLE_CRATE_SIZE[2] / 2
             )
         )
+
+    def _make_prop_can(self, x, y, color):
+
+        pose = (
+            self.robot_base
+            * SE3(
+                x,
+                y,
+                ColdDrink.HEIGHT / 2
+            )
+        )
+
+        return ColdDrink(
+            pose,
+            color=color
+        )
+
+    def _build_decor_cans(self):
+
+        active_x = R_PICK * np.cos(PHI_PICK)
+        active_y = R_PICK * np.sin(PHI_PICK)
+
+        # Even spacing between cans
+        dx = 0.080
+        dy = 0.085
+
+        red = (0.75, 0.15, 0.15, 1.0)
+        pink = (0.95, 0.40, 0.90, 1.0)
+        green = (0.45, 0.95, 0.55, 1.0)
+
+        # Bottom row - red
+        for i in range(5):
+
+            self.decor_cans.append(
+                self._make_prop_can(
+                    active_x + (i+1) * dx,
+                    active_y,
+                    red
+                )
+            )
+
+        # Middle row - pink
+        for i in range(5):
+
+            self.decor_cans.append(
+                self._make_prop_can(
+                    active_x + (i+1) * dx,
+                    active_y - dy,
+                    pink
+                )
+            )
+
+        # Top row - green
+        for i in range(5):
+
+            self.decor_cans.append(
+                self._make_prop_can(
+                    active_x + (i+1) * dx,
+                    active_y - 2 * dy,
+                    green
+                )
+            )
     
     def _build_bench(self):
 
@@ -332,6 +408,7 @@ class FR3Station:
 
         self.obstacles.append(self.obstacle_crate)
         self.shapes.append(self.obstacle_crate_visual.shape)
+        self.shapes.append(self.obstacle_crate_visual.label)
 
         self.obstacle_crate_placed = False
 
@@ -364,6 +441,9 @@ class FR3Station:
 
         for shape in self.shapes:
             env.add(shape)
+
+        for can in self.decor_cans:
+            can.add_to_env(env)
 
         self.gripper.add_to_env(env)
         self.drink.add_to_env(env)
