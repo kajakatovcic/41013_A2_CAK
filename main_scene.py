@@ -142,10 +142,9 @@ def main():
         cell_runner.obstacle_button("Cookie jar in Lynxmotion path (toggle)",
                                     stations["Lynxmotion"].toggle_jar, sequencer, safety,
                                     "Cookie jar"),
-        cell_runner.obstacle_button("Blue crate in FR3 path (toggle)",
-                                stations["FAIRINO_FR3"].toggle_obstacle_crate,
-                                sequencer, safety,
-                                "Blue crate"),       
+        cell_runner.obstacle_button("Drink cooler in FR3 path (toggle)",
+                                    stations["FAIRINO_FR3"].toggle_obstacle_crate, sequencer, safety,
+                                    "Drink cooler"),       
     ], pendant=pendant)
     cell_runner.run(env, safety, cell, cell_runner.make_curtain(), sequencer, task_label,
                     pendant=pendant)
