@@ -39,7 +39,6 @@ class LynxJob:
         self.station = station
         self.tray = tray
         self.held = None
-        self.placed = 0
 
         self.tray_stop_x = station.base.t[0] - Tray.PLATE_SLOT.t[0]
         plate = SE3(self.tray_stop_x, CONVEYOR_Y, Z_BELT) * Tray.PLATE_SLOT
@@ -116,7 +115,6 @@ class LynxJob:
             elif self.held is not None:
                 self.tray.attach(self.held, self.tray.pose.inv() * self.held.pose)
                 self.held = None
-                self.placed += 1
             return True
         return True
 

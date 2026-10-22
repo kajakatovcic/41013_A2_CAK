@@ -5,7 +5,7 @@ from ir_support_extra_parts import part_path
 
 from collisions import Obstacle
  
-from lynxmotion_ses_pro_model import LynxmotionSESPro, BASE_Z, TOOL_Z
+from lynxmotion_ses_pro_model import LynxmotionSESPro
 from lynx_motion import LynxPlanner
 from workcell_layout import STATIONS, Z_COUNTER
 from math import pi

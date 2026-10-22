@@ -6,7 +6,6 @@ from trimesh.nsphere import minimum_nsphere         # find the smallest circle w
 from scipy.spatial import ConvexHull                # 'rubber band' around the points of the circle
 from roboticstoolbox import Link, ET, ERobot        # link 'bone', how the bone moves, and the whole 'skeleton'
 import roboticstoolbox as rtb                       # DH links
-from ir_support.robots.UTSMeshRobot import UTSMeshRobot   # the course's required robot base class
 from spatialmath import SE3                         # position and direction GPS
 from spatialgeometry import Cylinder, Cuboid, Mesh  # shapes for modelling
 
@@ -298,7 +297,7 @@ class LynxmotionSESProET(ERobot):
             shape.T = (frame * offset).A
 
 # ============================================================
-# THE ROBOT (DH, UTSMeshRobot): the one the cell uses
+# THE ROBOT (DH): the one the cell uses
 # ============================================================
 _H = np.pi / 2
 
@@ -356,9 +355,6 @@ class LynxmotionSESPro(rtb.DHRobot):
             T = T * link.A(qi)
             frames.append(T)
         return frames
-
-    def tcp(self, q):
-        return self.fkine(np.clip(q, self.qlim[0], self.qlim[1])) * SE3.Tz(TOOL_Z)
 
     def pose_visuals(self, q, parts):
         q = np.clip(q, self.qlim[0], self.qlim[1])
