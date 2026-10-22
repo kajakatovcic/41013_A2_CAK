@@ -37,7 +37,7 @@ The integrated Swift panel also provides controlled movable obstacles for collis
 | `motion_planner.py` | **Shared by every robot**: jtraj for free-space moves and RMRC for constrained Cartesian moves, IK, collision checks, active avoidance. Details changing per robot go in a `PlannerSettings` |
 | `task_sequencer.py` | **Shared**: runs every robot and the conveyor frame by frame as 'lanes' synchronised by flags. Re-plans after a stop or when an obstacle moves |
 | `cell_runner.py` | **Shared**: Swift set-up, safety panel and real-time loop |
-| `teach_pendant.py` | **Shared**: teach/jog GUI (AUTO / MANUAL, joint sliders), pygame joystick jogging with rumble at joint limits, joystick Cross (X) button = physical e-stop |
+| `teach_pendant.py` | **Shared**: teach/jog GUI (AUTO / MANUAL, sliders switchable between joint jog and Cartesian X/Y/Z), pygame joystick jogging with rumble at joint limits, joystick Cross (X) button = physical e-stop |
 | `plan_report.py` | **Shared**: Use `--plan` for jtraj vs RMRC comparison and planned-sequence tables |
 | `jaka_motion.py` | JAKA planner settings: gripper, side grasp, speeds, gripper/cup collision shapes |
 | `coffee_station.py` | JAKA station: bench, cup dispenser, coffee machine, cup, gripper, movable milk pitcher |
@@ -69,7 +69,9 @@ python demos_and_debug/fairino_fr3_demo.py
 
 **Teach/jog and e-stops** (Swift side panel in every demo and `main_scene.py`):
 - **AUTO/MANUAL** toggles the mode. In MANUAL the task sequence and conveyor pause and the robot chosen in **Robot** is jogged. Switching back to AUTO re-plans the moves in progress from where the arms were left.
-- **Joint jog**: one slider per joint (degrees).
+- **Slider mode** chooses what the sliders do:
+    - **Joint jog**: one slider per joint (degrees).
+    - **Cartesian XYZ**: the first three sliders set the TCP's world X, Y and Z (m). The TCP moves in a straight line to the target with its orientation held (RMRC step). The other three sliders are not used in this mode.
 - **Cartesian jog (joystick)** (PS4 layout as in Lab 11): left stick = X/Y, Triangle = Z up, Circle = Z down. Rumbles while a jog pushes a joint against its limit or is blocked by a predicted collision.
 - **Physical e-stop: joystick Cross (X) button** (pygame button 0), active in AUTO and MANUAL. Unplugging the joystick also e-stops.
 - E-stops latch per source (GUI, joystick). Releasing one never restarts or clears another: **RESET**, then **START**. Jogging is blocked while stopped and between RESET and START.

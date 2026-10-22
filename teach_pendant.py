@@ -6,14 +6,19 @@
 #   MODES
 #     AUTO   - the task sequence runs (TaskSequencer). Manual inputs are ignored.
 #     MANUAL - "AUTO/MANUAL" button. The task sequence and conveyor are
-#              paused and the chosen robot follows the operator:
-#                * GUI joint jogging: one slider per joint (degrees). The joint
+#              paused and the chosen robot follows the operator. The
+#              "Slider mode" select chooses what the six sliders do:
+#                * Joint jog: one slider per joint (degrees). The joint
 #                  moves smoothly towards the slider at a capped speed.
-#                * Joystick Cartesian jogging:
+#                * Cartesian XYZ: the first three sliders are the TCP's world
+#                  X, Y and Z (m). The TCP moves in a straight line towards the
+#                  slider target at a capped speed with its orientation held,
+#                  using the same RMRC step as the joystick. 
+#                * Joystick Cartesian jogging (in either slider mode):
 #                  left stick = X/Y, Triangle = Z up, Circle = Z down. The
 #                  velocity is turned into joint motion with the Lab 9 RMRC
 #                  step rather than Lab 11's fixed-damping step (see
-#                  _cartesian_q for why).
+#                  _cartesian_q for explanation)
 #              Switching back to AUTO re-plans every move in progress from where
 #              the operator left the arms so automatic motion never jumps.
 #
@@ -47,6 +52,9 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 AUTO = "AUTO"
 MANUAL = "MANUAL"
+JOINT = "Joint jog"
+CARTESIAN = "Cartesian XYZ"
+SLIDER_MODES = (JOINT, CARTESIAN)
 
 
 # Joystick mapping: PS4/DualShock layout as in Lab 11 
@@ -64,6 +72,11 @@ DISCONNECT_SOURCE = "JOYSTICK DISCONNECTED"
 JOG_SPEED = 0.10 # m/s, tool speed for joystick Cartesian jogs
 JOINT_JOG_SPEED = np.deg2rad(20) # rad/s, joint slider jog speed
 LIMIT_MARGIN = np.deg2rad(0.5) # "at the limit" if this close to it
+CART_RANGE = 0.30 # m, Cartesian slider range either side of the TCP
+CART_STEP = 0.005 # m, Cartesian slider resolution
+CART_ARRIVED = 0.001 # m, Cartesian slider target reached
+CART_TRACK_TOL = 0.01 # m, TCP lagging its target by more = cannot follow
+CART_SETTLE_FRAMES = int(1.0 / DT) # frames allowed for the TCP to catch up
 RUMBLE_STRENGTH = 0.8 # 0-1, both motors
 RUMBLE_MS = 200 # re-triggered every frame while the condition holds
 RUMBLE_PULSE = 0.5 # s, minimum rumble for each new limit/blocked event
@@ -174,9 +187,12 @@ class TeachPendant:
         self.lanes = sequencer.robot_lanes
         self.k = 0 # index of the selected robot lane
         self.mode = AUTO
+        self.slider_mode = JOINT
         self.joystick = Joystick() if joystick is None else joystick
         self._estop_held = False
         self.joint_target = {} # joint index -> target angle (rad) from a slider
+        self.cart_target = None # world TCP target (m) from the Cartesian sliders
+        self._settle = 0 # frames the TCP has been catching up to a reached target
         self.warning = ""
         self._axes, self._buttons = [0.0] * 4, [0] * 4
         self._hold = None # Cartesian jog target: (lane, TCP position, orientation)
@@ -217,9 +233,11 @@ class TeachPendant:
         label("mode", "")
         env.add(swift.Select(cb=self._on_select_robot, desc="Robot",
                              options=[l.name for l in self.lanes], value=0))
+        env.add(swift.Select(cb=self._on_select_slider_mode, desc="Slider mode",
+                             options=list(SLIDER_MODES), value=0))
         label("pose", "")
-        # One slider per joint of the selected robot rebuilt in range and
-        # value whenever the selected robot changes.
+        # Six sliders, reused by both slider modes: rebuilt in range, label
+        # and value whenever the robot or the slider mode changes.
         n = max(l.robot.n for l in self.lanes)
         for j in range(n):
             s = swift.Slider(cb=lambda v, j=j: self._on_slider(j, v),
@@ -271,11 +289,26 @@ class TeachPendant:
         self._sync_sliders(force=True)
         self._update_labels(force=True)
 
+    def _on_select_slider_mode(self, value):
+        self.slider_mode = SLIDER_MODES[int(float(value))]
+        self._clear_jog()
+        self._sync_sliders(force=True)
+        self._update_labels(force=True)
+
     def _on_slider(self, j, value):
-        if self.mode != MANUAL or j >= self.lane.robot.n:
+        n_used = 3 if self.slider_mode == CARTESIAN else self.lane.robot.n
+        if self.mode != MANUAL or j >= n_used:
             self._sync_sliders(force=True) # snap the slider back
             if self.mode != MANUAL:
                 self._warn("Press AUTO/MANUAL to switch to MANUAL before jogging.")
+            elif self.slider_mode == CARTESIAN:
+                self._warn("Only the X, Y and Z sliders are used in Cartesian mode.")
+            return
+        if self.slider_mode == CARTESIAN:
+            # Start from the current target (another axis may be moving) or the TCP
+            if self.cart_target is None:
+                self.cart_target = self.lane.planner.tcp(self.lane.robot.q).t.copy()
+            self.cart_target[j] = float(value)
             return
         lo, hi = self.lane.robot.qlim[0][j], self.lane.robot.qlim[1][j]
         target = np.deg2rad(float(value))
@@ -335,7 +368,43 @@ class TeachPendant:
                 self.joint_target.clear()
             self._hold = None # a Cartesian jog after this starts from here
 
-        # 2. Cartesian jog with the joystick (Lab 11 q3 mapping)
+        # 2. Cartesian slider target: straight line towards it at JOG_SPEED
+        elif self.cart_target is not None:
+            p_now = self._hold[1] if self._hold is not None and self._hold[0] is lane \
+                else lane.planner.tcp(q).t
+            d = self.cart_target - p_now
+            dist = float(np.linalg.norm(d))
+            # Arrived = the ACTUAL TCP is at the target. Near a singularity DLS
+            # makes the TCP lag its moving target, so once the target reaches
+            # the slider value the step keeps correcting (v = 0) for a while.
+            short = float(np.linalg.norm(self.cart_target - lane.planner.tcp(q).t))
+            self._settle = self._settle + 1 if dist < CART_ARRIVED else 0
+            if short < CART_ARRIVED or self._settle > CART_SETTLE_FRAMES:
+                if short >= CART_ARRIVED:
+                    self._warn(f"{lane.name}: stopped {short * 1000:.0f} mm short of the X/Y/Z "
+                               "target (near a singularity).")
+                self.cart_target = None
+                self._hold = None
+            else:
+                v = d / dist * min(JOG_SPEED, dist / DT) if dist >= CART_ARRIVED else np.zeros(3)
+                q_new = self._cartesian_q(lane, q, v)
+                at_limit, blocked = self._apply(lane, q, q_new, "Cartesian slider jog")
+                if blocked or at_limit:
+                    self._clear_jog() # stop and take the next target from here
+                else:
+                    self._hold = self._next_hold
+                    lag = np.linalg.norm(lane.planner.tcp(lane.robot.q).t - self._hold[1])
+                    if lag > CART_TRACK_TOL:
+                        # e.g. target out of reach: the TCP stops following
+                        self._warn(f"{lane.name}: TCP cannot follow the X/Y/Z target "
+                                   "(out of reach or near a singularity) - jog stopped.")
+                        self._clear_jog()
+                        at_limit = True # rumble like a limit
+                    elif self._near_singular:
+                        self._warn(f"{lane.name}: near a singularity - Cartesian jog slowed "
+                                   "(damped least squares). Joint-jog away from it.")
+
+        # 3. Cartesian jog with the joystick (Lab 11 q3 mapping)
         else:
             v = np.zeros(3)
             if self.joystick.connected:
@@ -431,22 +500,42 @@ class TeachPendant:
 
     def _clear_jog(self):
         self.joint_target.clear()
+        self.cart_target = None
+        self._settle = 0
         self._hold = None
 
     def _sync_sliders(self, force=False):
-        """Keep the joint sliders showing the selected robot's joints (unless
-        the operator is dragging one) with that robot's joint limits."""
-        if not self.sliders or (self.joint_target and not force):
+        """Keep the sliders showing the selected robot's joints (joint mode)
+        or TCP position (Cartesian mode), unless the operator is jogging with
+        them. Joint sliders use the robot's joint limits. Cartesian sliders
+        span CART_RANGE either side of the TCP and re-centre if it leaves."""
+        jogging = self.joint_target or self.cart_target is not None
+        if not self.sliders or (jogging and not force):
             return
         if not force and self._frame % 5:
             return
         robot = self.lane.robot
+        if self.slider_mode == CARTESIAN:
+            tcp = self.lane.planner.tcp(robot.q).t
+            for j, s in enumerate(self.sliders):
+                if j < 3:
+                    if force or not s.min <= tcp[j] <= s.max:
+                        s.min, s.max = round(tcp[j] - CART_RANGE, 3), round(tcp[j] + CART_RANGE, 3)
+                        s.step, s.unit = CART_STEP, "m"
+                        s.desc = f"{self.lane.name} TCP {'XYZ'[j]} (world)"
+                    if force or abs(s.value - tcp[j]) > CART_STEP:
+                        s.value = round(float(tcp[j]), 3)
+                elif force:
+                    s.min, s.max, s.step, s.value, s.unit = 0, 0, 1, 0, ""
+                    s.desc = "- (not used in Cartesian mode)"
+            return
         q = np.rad2deg(robot.q)
         for j, s in enumerate(self.sliders):
             if j < robot.n:
                 lo, hi = np.rad2deg(robot.qlim[0][j]), np.rad2deg(robot.qlim[1][j])
                 if force:
                     s.min, s.max = round(lo), round(hi)
+                    s.step, s.unit = 1, "deg"
                     s.desc = f"{self.lane.name} J{j + 1}"
                 if force or abs(s.value - q[j]) > 0.5:
                     s.value = round(float(q[j]), 1)
@@ -458,7 +547,8 @@ class TeachPendant:
         if self.mode == AUTO:
             mode = "MODE: AUTO (task sequence). Press AUTO/MANUAL to jog."
         elif self.jog_allowed:
-            mode = f"MODE: MANUAL - jogging {lane.name} (sequence and conveyor paused)"
+            mode = (f"MODE: MANUAL - jogging {lane.name}, sliders = {self.slider_mode} "
+                    "(sequence and conveyor paused)")
         else:
             mode = (f"MODE: MANUAL - jog BLOCKED ({self.safety.state}): "
                     "RESET then START before jogging")
