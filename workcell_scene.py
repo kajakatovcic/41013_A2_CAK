@@ -1,6 +1,5 @@
 # Shared Smooth Oper-Caterer workcell: 
-# Includes enclosure, conveyor, tray, collection zone, safety equipment and areas
-# for the other three robots.
+# Includes enclosure, conveyor, tray, collection zone and safety equipment.
 #
 # Explanation for each piece of equipment: RISK REGISTOR -> CONTROL -> MODEL PLACED
 #
@@ -47,7 +46,7 @@ from collisions import Obstacle
 from workcell_layout import (
     Z_COUNTER, Z_BELT, CONVEYOR_Y, CONVEYOR_X_START, CONVEYOR_X_END, BELT_WIDTH,
     CELL_X_MIN, CELL_X_MAX, CELL_Y_MIN, CELL_Y_MAX, EXIT_X, EXIT_HALF_WIDTH,
-    COLLECTION_X, COLLECTION_ZONE_SIZE, STATIONS, LIGHT_CURTAIN_Z,
+    COLLECTION_X, COLLECTION_ZONE_SIZE, LIGHT_CURTAIN_Z,
     ESTOP_COLLECTION_POSE, ESTOP_CONSOLE_POSE, STAFF_GATE_X, TRAY_START_X,
 )
 
@@ -153,12 +152,6 @@ class Tray:
         for item, local in self.attached:
             item.set_pose(self.pose * local)
 
-    def slot_world(self, slot, x=None):
-        """
-        World pose of a tray slot with the tray at x (default: where it is).
-        """
-        return SE3(self.x if x is None else x, CONVEYOR_Y, Z_BELT) * slot
-
     def add_to_env(self, env):
         for m in self._meshes:
             env.add(m)
@@ -205,17 +198,14 @@ class Conveyor:
 
 
 # The whole shared cell. Robots and their props are built by their own
-# station files (coffee_station.py, ur3e_station.py, lynx_station.py).
+# station files (coffee_station.py, ur3e_station.py, lynx_station.py,
+# fairino_fr3_station.py).
 class Workcell:
     """
     Everything except the robots and their station props. Holds handles the
     controller needs at run time: the conveyor/tray, the light curtain field and
     intruder, and the stack-light beacon.
     """
-
-    # Stations whose robot and props are built by their own station file, so
-    # they get no "reserved" floor pad.
-    IMPLEMENTED = ("JAKA", "UR3e", "Lynxmotion")
 
     def __init__(self, tray_x=TRAY_START_X, tray_placeholders=Tray.ALL_PLACEHOLDERS):
         """
@@ -230,7 +220,6 @@ class Workcell:
         self._light_curtain()
         self._estops_and_indicators()
         self._signage_and_people()
-        self._reserved_stations()
 
     # floor
     def _floor(self):
@@ -321,15 +310,6 @@ class Workcell:
         self.shapes.append(part_mesh("personFemaleBusiness", pose=SE3(COLLECTION_X + 0.1, 1.05, 0) * SE3.Rz(-pi / 2)))
         self.shapes.append(part_mesh("personMaleCasual", pose=SE3(-0.6, CELL_Y_MAX + 0.7, 0) * SE3.Rz(-pi / 2)))
         self.shapes.append(part_mesh("SafetyPerson", pose=SE3(STAFF_GATE_X, CELL_Y_MIN - 0.8, 0) * SE3.Rz(pi / 2)))
-
-    # Reserved stations for robots not yet integrated (currently the FR3)
-    def _reserved_stations(self):
-        """ floor pads marking where unimplemented robots will mount."""
-        for name, (pose, _task) in STATIONS.items():
-            if name in self.IMPLEMENTED:
-                continue
-            self.shapes.append(Cuboid(scale=[0.9, 0.9, 0.005], color=(0.3, 0.5, 0.9, 0.35),
-                                      pose=SE3(pose.t[0], pose.t[1], 0.006)))
 
     def add_to_env(self, env):
         for s in self.shapes:

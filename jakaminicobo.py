@@ -35,7 +35,6 @@ class JakaMiniCobo(UTSMeshRobot):
         ]
  
 if __name__ == "__main__":
-    import numpy as np
     import swift
     robot = JakaMiniCobo()
     env = swift.Swift()

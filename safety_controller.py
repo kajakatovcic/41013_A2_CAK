@@ -165,11 +165,6 @@ class SafetyController:
         """Automatic (task sequence) motion is allowed."""
         return self.state == RUNNING
 
-    @property
-    def jog_allowed(self):
-        """Manual (teach/jog) motion is allowed. Never while stopped or faulted."""
-        return self.state not in (ESTOP, FAULT, PROTECTIVE_STOP)
-
     # Per frame tick() called from the main loop. THis is where the queued events are 
     # processed and the state machine is implemented. The main loop is paced by 
     # env.step(DT) which sleeps between frames.

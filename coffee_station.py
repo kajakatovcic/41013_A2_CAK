@@ -41,7 +41,6 @@ from workcell_scene import Indicator, LAMP_COLOURS, HIDDEN
 # Scaled to a 12oz cup (0.115m tall, 0.092m rim)
 CUP_SCALE = 0.45 
 CUP_HEIGHT = 0.256 * CUP_SCALE  
-CUP_RIM_RADIUS = 0.102 * CUP_SCALE
 CUP_GRIP_RADIUS = 0.082 * CUP_SCALE  # cup radius at the grasp height
 GRASP_HEIGHT = 0.055 # grasp point above the cup's base
 

@@ -31,7 +31,7 @@ The integrated Swift panel also provides controlled movable obstacles for collis
 | File | Contents |
 | --- | --- |
 | `workcell_layout.py` | World frame, conveyor, enclosure, station base poses, safety equipment positions |
-| `workcell_scene.py` | Enclosure, conveyor and tray, collection zone, safety equipment (with the risk register), reserved robot footprints |
+| `workcell_scene.py` | Enclosure, conveyor and tray, collection zone, safety equipment (with the risk register) |
 | `safety_controller.py` | E-stop / light curtain / fault state machine: latched stop, separate RESET and START. Light curtain modelled as beams (Lab 6 ray casting) |
 | `collisions.py` | Lab 5 line-plane test on link, tool and payload centre-lines + Lab 6 ellipsoids for the tool and payload, against named + rotatable `RectangularPrism` obstacles |
 | `motion_planner.py` | **Shared by every robot**: jtraj for free-space moves and RMRC for constrained Cartesian moves, IK, collision checks, active avoidance. Details changing per robot go in a `PlannerSettings` |

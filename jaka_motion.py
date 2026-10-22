@@ -115,13 +115,6 @@ def side_grasp_pose(base, r, phi, h):
     return base * SE3(r * np.cos(phi), r * np.sin(phi), h) * SE3.Rz(phi) * SE3.Ry(SIDE_PITCH)
 
 
-def cup_tilt(T_tcp):
-    """Angle (rad) between the held cup's axis and world vertical.
-    The cup axis is the tool's -x axis (see SIDE GRASP above)"""
-    R = T_tcp.A[:3, :3] if hasattr(T_tcp, "A") else np.asarray(T_tcp)[:3, :3]
-    return float(np.arccos(np.clip(-R[2, 0], -1.0, 1.0)))
-
-
 class JakaPlanner(MotionPlanner):
     """The shared planner set up with the JAKA's settings."""
 
