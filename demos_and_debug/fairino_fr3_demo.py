@@ -15,7 +15,7 @@ sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
 import numpy as np
-from fairino_fr3_task import FR3Task
+from fairino_fr3_task import FR3Task, COMPARE_CASES
 
 from safety_controller import SafetyController
 from workcell_scene import Workcell
@@ -79,6 +79,13 @@ def main():
             station,
             cell.conveyor.tray,
             safety
+        )
+
+        plan_report.compare_methods(
+            planner,
+            task.job,
+            COMPARE_CASES,
+            title="FAIRINO FR3 - JTRAJ vs RMRC COMPARISON"
         )
 
         plan_report.print_plan(

@@ -49,6 +49,31 @@ from workcell_scene import Tray
 READY_Q = np.deg2rad([0, -90, 90, -90, -90, 0])
 
 # =============================================================================
+# JTRAJ vs RMRC comparison cases
+# =============================================================================
+
+# Each case has the form:
+#   (label, start target, goal target, RMRC mode, holding payload)
+#
+# plan_report.compare_methods() plans the same movement once using
+# jtraj and once using RMRC, then compares their performance.
+
+COMPARE_CASES = [
+
+    # Cartesian approach to the drink.
+    # No payload is held yet.
+    ("lower to drink", "above_pick", "pick", "line", False,),
+
+    # Vertical lift immediately after grasping the drink.
+    ("lift drink", "pick", "above_pick", "line", True,),
+
+    # Main payload transport from pickup area to conveyor tray.
+    # The final task uses an RMRC arc so the drink can be carried
+    # around the FR3 base while remaining upright.
+    ("carry drink to tray", "above_pick", "above_tray", "arc", True,),
+]
+
+# =============================================================================
 # Integrated FR3 job
 # =============================================================================
 
